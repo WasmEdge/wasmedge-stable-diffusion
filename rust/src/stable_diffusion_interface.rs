@@ -93,12 +93,12 @@ pub enum SdTypeT {
     SdTypeCount = 31,
 }
 #[derive(Copy, Clone)]
-pub enum RngTypeT{
+pub enum RngTypeT {
     StdDefaultRng = 0,
     CUDARng = 1,
 }
 #[derive(Copy, Clone)]
-pub enum SampleMethodT{
+pub enum SampleMethodT {
     EULERA = 0,
     EULER = 1,
     HEUN = 2,
@@ -120,7 +120,7 @@ pub enum ScheduleT {
 pub enum ImageType<'a> {
     Path(&'a str),
 }
-fn parse_image(image: &ImageType) -> (i32, i32){
+fn parse_image(image: &ImageType) -> (i32, i32) {
     return match image {
         ImageType::Path(path) => {
             if path.is_empty() {
@@ -128,9 +128,6 @@ fn parse_image(image: &ImageType) -> (i32, i32){
             }
             let path = "path:".to_string() + path;
             (path.as_ptr() as i32, path.len() as i32)
-        }
-        _ => {
-            panic!("Invalid control image type")
         }
     };
 }
@@ -237,7 +234,6 @@ pub unsafe fn create_context(
     }
 }
 
-
 pub unsafe fn text_to_image(
     prompt: &str,
     session_id: u32,
@@ -260,7 +256,7 @@ pub unsafe fn text_to_image(
     upscale_repeats: i32,
     output_path: &str,
     output_buf: *mut u8,
-    out_buffer_max_size: i32
+    out_buffer_max_size: i32,
 ) -> Result<u32, WasmedgeSdErrno> {
     let prompt_ptr = prompt.as_ptr() as i32;
     let prompt_len = prompt.len() as i32;
