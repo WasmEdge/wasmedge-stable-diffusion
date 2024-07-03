@@ -399,7 +399,7 @@ pub unsafe fn image_to_image(
     }
 }
 pub mod wasmedge_stablediffusion {
-    #[link(wasm_import_module = "stable_diffusion")]
+    #[link(wasm_import_module = "wasmedge_stablediffusion")]
     extern "C" {
         pub fn create_context(
             model_path_ptr: i32,
