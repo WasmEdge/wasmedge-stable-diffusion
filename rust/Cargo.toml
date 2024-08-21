@@ -2,5 +2,11 @@
 name = "wasmedge_stable_diffusion"
 version = "0.1.0"
 edition = "2021"
+readme = "../README.md"
+repository = "https://github.com/WasmEdge/wasmedge-stable-diffusion"
+license = "Apache-2.0"
+categories = ["wasm", "science"]
+description = "A Rust library for using stable diffusion functions when the Wasi is being executed on WasmEdge."
+
 
 [dependencies]
