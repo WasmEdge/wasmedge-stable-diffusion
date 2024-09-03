@@ -2,7 +2,7 @@ use wasmedge_stable_diffusion::stable_diffusion_interface::{ImageType, SdTypeT};
 use wasmedge_stable_diffusion::{BaseFunction, Context, Quantization, StableDiffusion, Task};
 fn main() {
     // if you downloaded ckpt weights, you can use convert() to quantize the ckpt weight to gguf.
-    // For running other models, you need to change the model path of the following functions. 
+    // For running other models, you need to change the model path of the following functions.
     // let quantization =
     //     Quantization::new("./sd-v1-4.ckpt", "stable-diffusion-v1-4-Q8_0.gguf", SdTypeT::SdTypeQ8_0);
     // quantization.convert().unwrap();

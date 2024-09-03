@@ -255,7 +255,7 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
         &mut self.common
     }
     fn generate(&self) -> Result<(), WasmedgeSdErrno> {
-        if self.common.prompt.is_empty(){
+        if self.common.prompt.is_empty() {
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
         match self.image {
