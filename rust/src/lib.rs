@@ -70,6 +70,12 @@ pub trait BaseFunction<'a> {
         }
         self
     }
+    fn set_negative_prompt(&mut self, negative_prompt: impl Into<String>) -> &mut Self {
+        {
+            self.base().negative_prompt = negative_prompt.into();
+        }
+        self
+    }
     fn set_output_path(&mut self, output_path: &str) -> &mut Self {
         {
             self.base().output_path = output_path.to_string();
