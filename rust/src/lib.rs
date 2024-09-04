@@ -94,7 +94,7 @@ impl Quantization {
             model_path: model_path.to_string(),
             vae_model_path: "".to_string(),
             output_path: output_path.to_string(),
-            wtype: wtype,
+            wtype,
         }
     }
     pub fn convert(&self) -> Result<(), WasmedgeSdErrno> {
@@ -116,7 +116,7 @@ impl StableDiffusion {
             Task::ImageToImage => false,
         };
         StableDiffusion {
-            task: task,
+            task,
             model_path: model_path.to_string(),
             clip_l_path: "".to_string(),
             t5xxl_path: "".to_string(),
@@ -127,7 +127,7 @@ impl StableDiffusion {
             lora_model_dir: "".to_string(),
             embed_dir: "".to_string(),
             id_embed_dir: "".to_string(),
-            vae_decode_only: vae_decode_only,
+            vae_decode_only,
             vae_tiling: false,
             n_threads: -1,
             wtype: SdTypeT::SdTypeCount,
@@ -163,9 +163,7 @@ impl StableDiffusion {
                 self.vae_on_cpu,
                 session_id.as_mut_ptr(),
             );
-            if let Err(code) = result {
-                return Err(code);
-            }
+            result?;
             let common = BaseContext {
                 prompt: "".to_string(),
                 session_id: session_id.assume_init(),
@@ -190,9 +188,9 @@ impl StableDiffusion {
                 output_path: "".to_string(),
             };
             match self.task {
-                Task::TextToImage => Ok(Context::TextToImage(TextToImage { common: common })),
+                Task::TextToImage => Ok(Context::TextToImage(TextToImage { common })),
                 Task::ImageToImage => Ok(Context::ImageToImage(ImageToImage {
-                    common: common,
+                    common,
                     image: ImageType::Path(""),
                     strength: 0.75,
                 })),
@@ -214,10 +212,9 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
         if self.common.prompt.is_empty() {
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
-        let mut data: Vec<u8> = Vec::new();
-        data.resize(BUF_LEN as usize, 0);
-        unsafe {
-            let result = stable_diffusion_interface::text_to_image(
+        let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
+        let result = unsafe {
+            stable_diffusion_interface::text_to_image(
                 &self.common.prompt,
                 self.common.session_id,
                 &self.common.control_image,
@@ -239,14 +236,12 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
                 &self.common.upscale_model,
                 self.common.upscale_repeats,
                 &self.common.output_path,
-                data.as_mut_ptr() as *mut u8,
+                data.as_mut_ptr(),
                 BUF_LEN,
-            );
-            if let Err(code) = result {
-                return Err(code);
-            }
-            return Ok(());
-        }
+            )
+        };
+        result?;
+        Ok(())
     }
 }
 
@@ -265,10 +260,9 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
                 }
             }
         }
-        let mut data: Vec<u8> = Vec::new();
-        data.resize(BUF_LEN as usize, 0);
-        unsafe {
-            let result = stable_diffusion_interface::image_to_image(
+        let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
+        let result = unsafe {
+            stable_diffusion_interface::image_to_image(
                 &self.image,
                 self.common.session_id,
                 self.common.guidance,
@@ -292,14 +286,12 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
                 &self.common.upscale_model,
                 self.common.upscale_repeats,
                 &self.common.output_path,
-                data.as_mut_ptr() as *mut u8,
+                data.as_mut_ptr(),
                 BUF_LEN,
-            );
-            if let Err(code) = result {
-                return Err(code);
-            }
-            return Ok(());
-        }
+            )
+        };
+        result?;
+        Ok(())
     }
 }
 impl<'a> ImageToImage<'a> {

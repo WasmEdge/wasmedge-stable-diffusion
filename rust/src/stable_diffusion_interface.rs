@@ -52,11 +52,6 @@ impl fmt::Display for WasmedgeSdErrno {
     }
 }
 
-#[cfg(feature = "std")]
-extern crate std;
-#[cfg(feature = "std")]
-impl std::error::Error for WasmedgeSdErrno {}
-
 #[derive(Copy, Clone)]
 pub enum SdTypeT {
     SdTypeF32 = 0,
@@ -126,7 +121,7 @@ pub enum ImageType<'a> {
     Path(&'a str),
 }
 fn parse_image(image: &ImageType) -> (i32, i32) {
-    return match image {
+    match image {
         ImageType::Path(path) => {
             if path.is_empty() {
                 return (0, 0);
@@ -134,8 +129,10 @@ fn parse_image(image: &ImageType) -> (i32, i32) {
             let path = "path:".to_string() + path;
             (path.as_ptr() as i32, path.len() as i32)
         }
-    };
+    }
 }
+/// # Safety
+/// This will call an external wasm function
 pub unsafe fn convert(
     model_path: &str,
     vae_model_path: &str,
@@ -163,6 +160,9 @@ pub unsafe fn convert(
         Ok(())
     }
 }
+#[allow(clippy::too_many_arguments)]
+/// # Safety
+/// This will call an external wasm function
 pub unsafe fn create_context(
     model_path: &str,
     clip_l_path: &str,
@@ -207,7 +207,7 @@ pub unsafe fn create_context(
     let id_embed_dir_len = id_embed_dir.len() as i32;
     let vae_decode_only = vae_decode_only as i32;
     let vae_tiling = vae_tiling as i32;
-    let n_threads = n_threads as i32;
+    let n_threads_ = n_threads;
     let wtype = wtype as i32;
     let rng_type = rng_type as i32;
     let schedule = schedule as i32;
@@ -238,7 +238,7 @@ pub unsafe fn create_context(
         id_embed_dir_len,
         vae_decode_only,
         vae_tiling,
-        n_threads,
+        n_threads_,
         wtype,
         rng_type,
         schedule,
@@ -254,6 +254,9 @@ pub unsafe fn create_context(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
+/// # Safety
+/// This will call an external wasm function
 pub unsafe fn text_to_image(
     prompt: &str,
     session_id: u32,
@@ -295,7 +298,7 @@ pub unsafe fn text_to_image(
     let output_path_ptr = output_path.as_ptr() as i32;
     let output_path_len = output_path.len() as i32;
     let output_buf_ptr = output_buf as i32;
-    let out_buffer_max_size = out_buffer_max_size as i32;
+    let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
     let result = wasmedge_stablediffusion::text_to_image(
         prompt_ptr,
@@ -326,7 +329,7 @@ pub unsafe fn text_to_image(
         output_path_ptr,
         output_path_len,
         output_buf_ptr,
-        out_buffer_max_size,
+        out_buffer_max_size_,
         write_bytes.as_mut_ptr() as i32,
     );
     if result != 0 {
@@ -335,6 +338,9 @@ pub unsafe fn text_to_image(
         Ok(write_bytes.assume_init())
     }
 }
+#[allow(clippy::too_many_arguments)]
+/// # Safety
+/// This will call an external wasm function
 pub unsafe fn image_to_image(
     image: &ImageType,
     session_id: u32,
@@ -379,7 +385,7 @@ pub unsafe fn image_to_image(
     let output_path_ptr = output_path.as_ptr() as i32;
     let output_path_len = output_path.len() as i32;
     let output_buf_ptr = output_buf as i32;
-    let out_buffer_max_size = out_buffer_max_size as i32;
+    let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
     let result = wasmedge_stablediffusion::image_to_image(
         image_ptr,
@@ -413,7 +419,7 @@ pub unsafe fn image_to_image(
         output_path_ptr,
         output_path_len,
         output_buf_ptr,
-        out_buffer_max_size,
+        out_buffer_max_size_,
         write_bytes.as_mut_ptr() as i32,
     );
     if result != 0 {

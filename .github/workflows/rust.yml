@@ -1,0 +1,36 @@
+name: Build Rust Crate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Enable wasm32-wasip1 target
+        run: rustup target add wasm32-wasip1
+
+      - name: Run rustfmt
+        run: |
+          cd rust
+          cargo fmt -- --check
+
+      - name: Run clippy
+        run: |
+          cd rust
+          cargo clippy -- -D warnings
+
+      - name: Build
+        run: |
+          cd rust
+          cargo build --target=wasm32-wasip1 --release
