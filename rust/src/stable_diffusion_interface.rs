@@ -90,7 +90,10 @@ pub enum SdTypeT {
     SdTypeF64 = 28,
     SdTypeIq1M = 29,
     SdTypeBf16 = 30,
-    SdTypeCount = 31,
+    SdTypeQ4044 = 31,
+    SdTypeQ4048 = 32,
+    SdTypeQ4088 = 33,
+    SdTypeCount = 34,
 }
 #[derive(Copy, Clone)]
 pub enum RngTypeT {
@@ -106,16 +109,18 @@ pub enum SampleMethodT {
     DPMPP2SA = 4,
     DPMPP2M = 5,
     DPMPP2Mv2 = 6,
-    LCM = 7,
-    NSAMPLEMETHODS = 8,
+    IPNDM = 7,
+    IPNDMV = 8,
+    LCM = 9,
 }
 #[derive(Copy, Clone)]
 pub enum ScheduleT {
     DEFAULT = 0,
     DISCRETE = 1,
     KARRAS = 2,
-    AYS = 3,
-    NSCHEDULES = 4,
+    EXPONENTIAL = 3,
+    AYS = 4,
+    GITS = 5,
 }
 pub enum ImageType<'a> {
     Path(&'a str),
@@ -160,6 +165,9 @@ pub unsafe fn convert(
 }
 pub unsafe fn create_context(
     model_path: &str,
+    clip_l_path: &str,
+    t5xxl_path: &str,
+    diffusion_model_path: &str,
     vae_path: &str,
     taesd_path: &str,
     control_net_path: &str,
@@ -179,6 +187,12 @@ pub unsafe fn create_context(
 ) -> Result<(), WasmedgeSdErrno> {
     let model_path_ptr = model_path.as_ptr() as i32;
     let model_path_len = model_path.len() as i32;
+    let clip_l_path_ptr = clip_l_path.as_ptr() as i32;
+    let clip_l_path_len = clip_l_path.len() as i32;
+    let t5xxl_path_ptr = t5xxl_path.as_ptr() as i32;
+    let t5xxl_path_len = t5xxl_path.len() as i32;
+    let diffusion_model_path_ptr = diffusion_model_path.as_ptr() as i32;
+    let diffusion_model_path_len = diffusion_model_path.len() as i32;
     let vae_path_ptr = vae_path.as_ptr() as i32;
     let vae_path_len = vae_path.len() as i32;
     let taesd_path_ptr = taesd_path.as_ptr() as i32;
@@ -204,6 +218,12 @@ pub unsafe fn create_context(
     let result = wasmedge_stablediffusion::create_context(
         model_path_ptr,
         model_path_len,
+        clip_l_path_ptr,
+        clip_l_path_len,
+        t5xxl_path_ptr,
+        t5xxl_path_len,
+        diffusion_model_path_ptr,
+        diffusion_model_path_len,
         vae_path_ptr,
         vae_path_len,
         taesd_path_ptr,
@@ -239,6 +259,7 @@ pub unsafe fn text_to_image(
     session_id: u32,
     control_image: &ImageType,
     negative_prompt: &str,
+    guidance: f32,
     width: i32,
     height: i32,
     clip_skip: i32,
@@ -284,6 +305,7 @@ pub unsafe fn text_to_image(
         control_image_len,
         negative_prompt_ptr,
         negative_prompt_len,
+        guidance,
         width,
         height,
         clip_skip,
@@ -316,6 +338,7 @@ pub unsafe fn text_to_image(
 pub unsafe fn image_to_image(
     image: &ImageType,
     session_id: u32,
+    guidance: f32,
     width: i32,
     height: i32,
     control_image: &ImageType,
@@ -362,6 +385,7 @@ pub unsafe fn image_to_image(
         image_ptr,
         image_len,
         session_id,
+        guidance,
         width,
         height,
         control_image_ptr,
@@ -404,6 +428,12 @@ pub mod wasmedge_stablediffusion {
         pub fn create_context(
             model_path_ptr: i32,
             model_path_len: i32,
+            clip_l_path_ptr: i32,
+            clip_l_path_len: i32,
+            t5xxl_path_ptr: i32,
+            t5xxl_path_len: i32,
+            diffusion_model_path_ptr: i32,
+            diffusion_model_path_len: i32,
             vae_path_ptr: i32,
             vae_path_len: i32,
             taesd_path_ptr: i32,
@@ -432,6 +462,7 @@ pub mod wasmedge_stablediffusion {
             image_ptr: i32,
             image_len: i32,
             session_id: i32,
+            guidance: f32,
             width: i32,
             height: i32,
             control_image_ptr: i32,
@@ -471,6 +502,7 @@ pub mod wasmedge_stablediffusion {
             control_image_len: i32,
             negative_prompt_ptr: i32,
             negative_prompt_len: i32,
+            guidance: f32,
             width: i32,
             height: i32,
             clip_skip: i32,

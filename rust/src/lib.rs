@@ -20,6 +20,9 @@ pub enum Context<'a> {
 pub struct StableDiffusion {
     task: Task,
     model_path: String,
+    clip_l_path: String,
+    t5xxl_path: String,
+    diffusion_model_path: String,
     vae_path: String,
     taesd_path: String,
     control_net_path: String,
@@ -39,6 +42,7 @@ pub struct StableDiffusion {
 pub struct BaseContext<'a> {
     pub session_id: u32,
     pub prompt: String,
+    pub guidance: f32,
     pub width: i32,
     pub height: i32,
     pub control_image: ImageType<'a>,
@@ -114,6 +118,9 @@ impl StableDiffusion {
         StableDiffusion {
             task: task,
             model_path: model_path.to_string(),
+            clip_l_path: "".to_string(),
+            t5xxl_path: "".to_string(),
+            diffusion_model_path: "".to_string(),
             vae_path: "".to_string(),
             taesd_path: "".to_string(),
             control_net_path: "".to_string(),
@@ -136,6 +143,9 @@ impl StableDiffusion {
         unsafe {
             let result = stable_diffusion_interface::create_context(
                 &self.model_path,
+                &self.clip_l_path,
+                &self.t5xxl_path,
+                &self.diffusion_model_path,
                 &self.vae_path,
                 &self.taesd_path,
                 &self.control_net_path,
@@ -159,6 +169,7 @@ impl StableDiffusion {
             let common = BaseContext {
                 prompt: "".to_string(),
                 session_id: session_id.assume_init(),
+                guidance: 3.5,
                 width: 512,
                 height: 512,
                 control_image: ImageType::Path(""),
@@ -188,6 +199,12 @@ impl StableDiffusion {
             }
         }
     }
+    pub fn set_lora_model_dir(&mut self, lora_model_dir: &str) -> &mut Self {
+        {
+            self.lora_model_dir = lora_model_dir.to_string();
+        }
+        self
+    }
 }
 impl<'a> BaseFunction<'a> for TextToImage<'a> {
     fn base(&mut self) -> &mut BaseContext<'a> {
@@ -205,6 +222,7 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
                 self.common.session_id,
                 &self.common.control_image,
                 &self.common.negative_prompt,
+                self.common.guidance,
                 self.common.width,
                 self.common.height,
                 self.common.clip_skip,
@@ -253,6 +271,7 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
             let result = stable_diffusion_interface::image_to_image(
                 &self.image,
                 self.common.session_id,
+                self.common.guidance,
                 self.common.width,
                 self.common.height,
                 &self.common.control_image,
