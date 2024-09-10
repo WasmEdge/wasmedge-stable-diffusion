@@ -1,7 +1,15 @@
+pub mod error;
 pub mod stable_diffusion_interface;
+
 use core::mem::MaybeUninit;
+use error::SDError;
 use stable_diffusion_interface::*;
+use std::path::Path;
+
 const BUF_LEN: i32 = 1000000;
+
+pub type SDResult<T> = Result<T, SDError>;
+
 pub struct Quantization {
     pub model_path: String,
     pub vae_model_path: String,
@@ -9,14 +17,19 @@ pub struct Quantization {
     pub wtype: SdTypeT,
 }
 
+#[derive(Debug)]
 pub enum Task {
     TextToImage,
     ImageToImage,
 }
+
+#[derive(Debug)]
 pub enum Context<'a> {
     TextToImage(TextToImage<'a>),
     ImageToImage(ImageToImage<'a>),
 }
+
+#[derive(Debug)]
 pub struct StableDiffusion {
     task: Task,
     model_path: String,
@@ -39,6 +52,8 @@ pub struct StableDiffusion {
     control_net_cpu: bool,
     vae_on_cpu: bool,
 }
+
+#[derive(Debug)]
 pub struct BaseContext<'a> {
     pub session_id: u32,
     pub prompt: String,
@@ -85,9 +100,12 @@ pub trait BaseFunction<'a> {
     fn generate(&self) -> Result<(), WasmedgeSdErrno>;
 }
 
+#[derive(Debug)]
 pub struct TextToImage<'a> {
     pub common: BaseContext<'a>,
 }
+
+#[derive(Debug)]
 pub struct ImageToImage<'a> {
     pub common: BaseContext<'a>,
     pub image: ImageType<'a>,
@@ -144,10 +162,40 @@ impl StableDiffusion {
             vae_on_cpu: false,
         }
     }
+
+    pub fn new_with_standalone_model(task: Task, diffusion_model_path: &str) -> StableDiffusion {
+        let vae_decode_only = match task {
+            Task::TextToImage => true,
+            Task::ImageToImage => false,
+        };
+        StableDiffusion {
+            task,
+            model_path: "".to_string(),
+            clip_l_path: "".to_string(),
+            t5xxl_path: "".to_string(),
+            diffusion_model_path: diffusion_model_path.to_string(),
+            vae_path: "".to_string(),
+            taesd_path: "".to_string(),
+            control_net_path: "".to_string(),
+            lora_model_dir: "".to_string(),
+            embed_dir: "".to_string(),
+            id_embed_dir: "".to_string(),
+            vae_decode_only,
+            vae_tiling: false,
+            n_threads: -1,
+            wtype: SdTypeT::SdTypeCount,
+            rng_type: RngTypeT::StdDefaultRng,
+            schedule: ScheduleT::DEFAULT,
+            clip_on_cpu: false,
+            control_net_cpu: false,
+            vae_on_cpu: false,
+        }
+    }
+
     pub fn create_context(&self) -> Result<Context, WasmedgeSdErrno> {
         let mut session_id = MaybeUninit::<u32>::uninit();
         unsafe {
-            let result = stable_diffusion_interface::create_context(
+            stable_diffusion_interface::create_context(
                 &self.model_path,
                 &self.clip_l_path,
                 &self.t5xxl_path,
@@ -168,8 +216,7 @@ impl StableDiffusion {
                 self.control_net_cpu,
                 self.vae_on_cpu,
                 session_id.as_mut_ptr(),
-            );
-            result?;
+            )?;
             let common = BaseContext {
                 prompt: "".to_string(),
                 session_id: session_id.assume_init(),
@@ -311,6 +358,88 @@ impl<'a> ImageToImage<'a> {
         {
             self.strength = strength;
         }
+        self
+    }
+}
+
+#[derive(Debug)]
+pub struct SDBuidler {
+    sd: StableDiffusion,
+}
+impl SDBuidler {
+    pub fn new(task: Task, model_path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = model_path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
+        let sd = StableDiffusion::new(task, path);
+        Ok(Self { sd })
+    }
+
+    /// Create a new builder with a full model path.
+    pub fn new_with_full_model(task: Task, model_path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = model_path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
+        let sd = StableDiffusion::new(task, path);
+        Ok(Self { sd })
+    }
+
+    /// Create a new builder with a standalone diffusion model.
+    pub fn new_with_standalone_model(
+        task: Task,
+        diffusion_model_path: impl AsRef<Path>,
+    ) -> SDResult<Self> {
+        let path = diffusion_model_path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
+        let sd = StableDiffusion::new_with_standalone_model(task, path);
+        Ok(Self { sd })
+    }
+
+    pub fn with_vae_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation("The path to the vae file is not valid unicode.".into())
+        })?;
+        self.sd.t5xxl_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_clip_l_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation("The path to the clip_l file is not valid unicode.".into())
+        })?;
+        self.sd.clip_l_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_t5xxl_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation("The path to the t5xxl file is not valid unicode.".into())
+        })?;
+        self.sd.t5xxl_path = path.into();
+        Ok(self)
+    }
+
+    pub fn clip_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.clip_on_cpu = enable;
+        self
+    }
+
+    pub fn vae_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.vae_on_cpu = enable;
+        self
+    }
+
+    pub fn enable_vae_tiling(mut self, enable: bool) -> Self {
+        self.sd.vae_tiling = enable;
+        self
+    }
+
+    pub fn with_n_threads(mut self, n_threads: i32) -> Self {
+        self.sd.n_threads = n_threads;
         self
     }
 }
