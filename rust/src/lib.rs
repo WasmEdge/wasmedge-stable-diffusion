@@ -403,7 +403,7 @@ impl SDBuidler {
         let path = path.as_ref().to_str().ok_or_else(|| {
             SDError::Operation("The path to the vae file is not valid unicode.".into())
         })?;
-        self.sd.t5xxl_path = path.into();
+        self.sd.vae_path = path.into();
         Ok(self)
     }
 
