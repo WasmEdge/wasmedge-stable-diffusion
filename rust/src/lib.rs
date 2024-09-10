@@ -442,4 +442,8 @@ impl SDBuidler {
         self.sd.n_threads = n_threads;
         self
     }
+
+    pub fn build(self) -> StableDiffusion {
+        self.sd
+    }
 }
