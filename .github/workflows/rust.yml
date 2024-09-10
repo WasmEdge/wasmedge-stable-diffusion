@@ -2,9 +2,25 @@ name: Build Rust Crate
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - dev
+      - main
+      - release-*
+      - feat-*
+      - ci-*
+      - refactor-*
+      - fix-*
+      - test-*
   pull_request:
-    branches: [ main ]
+    branches:
+      - dev
+      - main
+      - release-*
+      - feat-*
+      - ci-*
+      - refactor-*
+      - fix-*
+      - test-*
 
 env:
   CARGO_TERM_COLOR: always
