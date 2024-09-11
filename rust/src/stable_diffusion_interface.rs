@@ -52,7 +52,7 @@ impl fmt::Display for WasmedgeSdErrno {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum SdTypeT {
     SdTypeF32 = 0,
     SdTypeF16 = 1,
@@ -90,12 +90,12 @@ pub enum SdTypeT {
     SdTypeQ4088 = 33,
     SdTypeCount = 34,
 }
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum RngTypeT {
     StdDefaultRng = 0,
     CUDARng = 1,
 }
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum SampleMethodT {
     EULERA = 0,
     EULER = 1,
@@ -108,7 +108,7 @@ pub enum SampleMethodT {
     IPNDMV = 8,
     LCM = 9,
 }
-#[derive(Copy, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum ScheduleT {
     DEFAULT = 0,
     DISCRETE = 1,
@@ -117,6 +117,7 @@ pub enum ScheduleT {
     AYS = 4,
     GITS = 5,
 }
+#[derive(Debug)]
 pub enum ImageType<'a> {
     Path(&'a str),
 }

@@ -10,3 +10,4 @@ description = "A Rust library for using stable diffusion functions when the Wasi
 
 
 [dependencies]
+thiserror = "1"
