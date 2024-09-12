@@ -97,6 +97,36 @@ pub trait BaseFunction<'a> {
         }
         self
     }
+    fn set_cfg_scale(&mut self, cfg_scale: f32) -> &mut Self {
+        {
+            self.base().cfg_scale = cfg_scale;
+        }
+        self
+    }
+    fn set_sample_method(&mut self, sample_method: SampleMethodT) -> &mut Self {
+        {
+            self.base().sample_method = sample_method;
+        }
+        self
+    }
+    fn set_sample_steps(&mut self, sample_steps: i32) -> &mut Self {
+        {
+            self.base().sample_steps = sample_steps;
+        }
+        self
+    }
+    fn set_width(&mut self, width: i32) -> &mut Self {
+        {
+            self.base().width = width;
+        }
+        self
+    }
+    fn set_height(&mut self, height: i32) -> &mut Self {
+        {
+            self.base().height = height;
+        }
+        self
+    }
     fn generate(&self) -> Result<(), WasmedgeSdErrno>;
 }
 
