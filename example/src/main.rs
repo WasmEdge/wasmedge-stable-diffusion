@@ -846,7 +846,6 @@ impl Default for Options {
             init_img: String::from(""),
             control_image: String::from(""),
         
-        
             prompt: String::from(""),
             negative_prompt: String::from(""),
             cfg_scale: 7.0,
@@ -856,7 +855,6 @@ impl Default for Options {
             width: 512,
             height: 512,
             batch_count: 1,
-        
         
             sample_method: SampleMethodT::EULERA,
             schedule: ScheduleT::DEFAULT,
@@ -875,7 +873,6 @@ impl Default for Options {
         }
     }
 }
-
 
 fn print_params(params: &mut Options) {
     println!("Option:");
