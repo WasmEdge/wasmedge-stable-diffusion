@@ -128,7 +128,7 @@ pub trait BaseFunction<'a> {
         self
     }
     fn set_base_params(
-        &mut self, 
+        &mut self,
         prompt: String,
         guidance: f32,
         width: i32,
