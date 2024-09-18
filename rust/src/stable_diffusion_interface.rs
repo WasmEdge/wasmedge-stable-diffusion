@@ -134,7 +134,7 @@ fn parse_image(image: &ImageType) -> (i32, i32) {
 }
 
 //as for wtype
-impl SdTypeT{
+impl SdTypeT {
     pub fn from_index(index: usize) -> Result<SdTypeT, String> {
         match index {
             0 => Ok(SdTypeT::SdTypeF32),
@@ -156,7 +156,7 @@ impl SdTypeT{
             16 => Ok(SdTypeT::SdTypeIq2Xxs),
             17 => Ok(SdTypeT::SdTypeIq2Xs),
             18 => Ok(SdTypeT::SdTypeIq3Xxs),
-            19 => Ok(SdTypeT::SdTypeIq1S), 
+            19 => Ok(SdTypeT::SdTypeIq1S),
             20 => Ok(SdTypeT::SdTypeIq4Nl),
             21 => Ok(SdTypeT::SdTypeIq3S),
             22 => Ok(SdTypeT::SdTypeIq2S),
@@ -166,7 +166,7 @@ impl SdTypeT{
             26 => Ok(SdTypeT::SdTypeI32),
             27 => Ok(SdTypeT::SdTypeI64),
             28 => Ok(SdTypeT::SdTypeF64),
-            29 => Ok(SdTypeT::SdTypeIq1M), 
+            29 => Ok(SdTypeT::SdTypeIq1M),
             30 => Ok(SdTypeT::SdTypeBf16),
             31 => Ok(SdTypeT::SdTypeQ4044),
             32 => Ok(SdTypeT::SdTypeQ4048),

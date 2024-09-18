@@ -127,7 +127,8 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_base_params(&mut self, 
+    fn set_base_params(
+        &mut self, 
         prompt: String,
         guidance: f32,
         width: i32,
@@ -528,7 +529,9 @@ impl SDBuidler {
 
     pub fn with_stacked_id_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
         let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the stacked id embeddings dir is not valid unicode.".into())
+            SDError::Operation(
+                "The path to the stacked id embeddings dir is not valid unicode.".into(),
+            )
         })?;
         self.sd.id_embed_dir = path.into();
         Ok(self)
