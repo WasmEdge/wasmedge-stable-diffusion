@@ -1,5 +1,5 @@
 use wasmedge_stable_diffusion::stable_diffusion_interface::{ImageType, SdTypeT, RngTypeT, SampleMethodT, ScheduleT};
-use wasmedge_stable_diffusion::{BaseFunction, Context, Quantization, StableDiffusion, Task, SDBuidler};
+use wasmedge_stable_diffusion::{BaseFunction, Context, Quantization, Task, SDBuidler};
 
 use clap::{crate_version, Arg, ArgAction, Command};
 use std::str::FromStr;
@@ -617,9 +617,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards");
         let current_time_secs = current_time.as_secs() as u32;
-
         let mut rng = rand::thread_rng();
-        seed = ((rng.gen::<u32>() ^ current_time_secs) & i32::MAX as u32) as i32; // 将结果限制在 i32 范围内
+        // Limit the result to i32 range
+        seed = ((rng.gen::<u32>() ^ current_time_secs) & i32::MAX as u32) as i32;
     }
     options.seed = seed;
 
@@ -666,23 +666,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     print_params(&mut options);
     
     //------------------------------- run the model ----------------------------------------
-    // let context = StableDiffusion::new(task, sd_model,
-    //     vae_path,
-    //     taesd_path, 
-    //     control_net_path, 
-    //     lora_model_dir, embeddings_path, stacked_id_embd_dir,
-    //     vae_tiling, 
-    //     *n_threads,
-    //     wtype,
-    //     rng_type,
-    //     schedule,
-    //     clip_on_cpu,
-    //     control_net_cpu,
-    //     vae_on_cpu
-    // );
     let context = SDBuidler::new(task, sd_model)?
-        .with_clip_l_path("")?
-        .with_t5xxl_path("")?
+        .with_clip_l_path(options.clip_l_path)?
+        .with_t5xxl_path(options.t5xxl_path)?
         .with_vae_path(options.vae_path)?
         .with_taesd_path(options.taesd_path)?
         .with_control_net_path(options.control_net_path)?
@@ -698,33 +684,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .enable_control_net_cpu(options.control_net_cpu)
         .enable_vae_on_cpu(options.vae_on_cpu)
         .build();
-
+    
     match sd_mode.as_str(){
         "txt2img" => {
             println!("txt2img");
             if let Context::TextToImage(mut text_to_image) = context.create_context().unwrap() {
                 text_to_image
-                    .set_base_params(options.prompt,
-                        options.guidance,
-                        options.width,
-                        options.height,
-                        ImageType::Path(&options.control_image),
-                        options.negative_prompt,
-                        options.clip_skip,
-                        options.cfg_scale,
-                        options.sample_method,
-                        options.sample_steps,
-                        options.seed,
-                        options.batch_count,
-                        options.control_strength,
-                        options.style_ratio,
-                        options.normalize_input,
-                        options.input_id_images_dir,
-                        options.canny,
-                        options.upscale_model,
-                        options.upscale_repeats,
-                        options.output_path
-                    )
+                    .set_prompt(options.prompt)
+                    .set_guidance(options.guidance)
+                    .set_width(options.width)
+                    .set_height(options.height)
+                    .set_control_image(ImageType::Path(&options.control_image))
+                    .set_negative_prompt(options.negative_prompt)
+                    .set_clip_skip(options.clip_skip)
+                    .set_cfg_scale(options.cfg_scale)
+                    .set_sample_method(options.sample_method)
+                    .set_sample_steps(options.sample_steps)
+                    .set_seed(options.seed)
+                    .set_batch_count(options.batch_count)
+                    .set_control_strength(options.control_strength)
+                    .set_style_ratio(options.style_ratio)
+                    .set_normalize_input(options.normalize_input)
+                    .set_input_id_images_dir(options.input_id_images_dir)
+                    .set_canny_preprocess(options.canny)
+                    .set_upscale_model(options.upscale_model)
+                    .set_upscale_repeats(options.upscale_repeats)
+                    .set_output_path(options.output_path)
                     .generate()
                     .unwrap();
             }
@@ -733,27 +718,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             println!("img2img");
             if let Context::ImageToImage(mut image_to_image) = context.create_context().unwrap() {
                 image_to_image
-                    .set_base_params(options.prompt,
-                        options.guidance,
-                        options.width,
-                        options.height,
-                        ImageType::Path(&options.control_image),
-                        options.negative_prompt,
-                        options.clip_skip,
-                        options.cfg_scale,
-                        options.sample_method,
-                        options.sample_steps,
-                        options.seed,
-                        options.batch_count,
-                        options.control_strength,
-                        options.style_ratio,
-                        options.normalize_input,
-                        options.input_id_images_dir,
-                        options.canny,
-                        options.upscale_model,
-                        options.upscale_repeats,
-                        options.output_path
-                    )
+                    .set_prompt(options.prompt)
+                    .set_guidance(options.guidance)
+                    .set_width(options.width)
+                    .set_height(options.height)
+                    .set_control_image(ImageType::Path(&options.control_image))
+                    .set_negative_prompt(options.negative_prompt)
+                    .set_clip_skip(options.clip_skip)
+                    .set_cfg_scale(options.cfg_scale)
+                    .set_sample_method(options.sample_method)
+                    .set_sample_steps(options.sample_steps)
+                    .set_seed(options.seed)
+                    .set_batch_count(options.batch_count)
+                    .set_control_strength(options.control_strength)
+                    .set_style_ratio(options.style_ratio)
+                    .set_normalize_input(options.normalize_input)
+                    .set_input_id_images_dir(options.input_id_images_dir)
+                    .set_canny_preprocess(options.canny)
+                    .set_upscale_model(options.upscale_model)
+                    .set_upscale_repeats(options.upscale_repeats)
+                    .set_output_path(options.output_path)
+                    //addtional options for img2img
                     .set_image(ImageType::Path(&options.init_img))
                     .set_strength(options.strength)
                     .generate()

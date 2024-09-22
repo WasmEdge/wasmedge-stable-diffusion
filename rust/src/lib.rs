@@ -79,21 +79,45 @@ pub struct BaseContext<'a> {
 }
 pub trait BaseFunction<'a> {
     fn base(&mut self) -> &mut BaseContext<'a>;
-    fn set_prompt(&mut self, prompt: &str) -> &mut Self {
+    fn set_prompt(&mut self, prompt: String) -> &mut Self {
         {
-            self.base().prompt = prompt.to_string();
+            self.base().prompt = prompt;
         }
         self
     }
-    fn set_negative_prompt(&mut self, negative_prompt: impl Into<String>) -> &mut Self {
+    fn set_guidance(&mut self, guidance: f32) -> &mut Self {
         {
-            self.base().negative_prompt = negative_prompt.into();
+            self.base().guidance = guidance;
         }
         self
     }
-    fn set_output_path(&mut self, output_path: &str) -> &mut Self {
+    fn set_width(&mut self, width: i32) -> &mut Self {
         {
-            self.base().output_path = output_path.to_string();
+            self.base().width = width;
+        }
+        self
+    }
+    fn set_height(&mut self, height: i32) -> &mut Self {
+        {
+            self.base().height = height;
+        }
+        self
+    }
+    fn set_control_image(&mut self, control_image: ImageType<'a>) -> &mut Self {
+        {
+            self.base().control_image = control_image;
+        }
+        self
+    }
+    fn set_negative_prompt(&mut self, negative_prompt: String) -> &mut Self {
+        {
+            self.base().negative_prompt = negative_prompt;
+        }
+        self
+    }
+    fn set_clip_skip(&mut self, clip_skip: i32) -> &mut Self {
+        {
+            self.base().clip_skip = clip_skip;
         }
         self
     }
@@ -115,61 +139,62 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_width(&mut self, width: i32) -> &mut Self {
+    fn set_seed(&mut self, seed: i32) -> &mut Self {
         {
-            self.base().width = width;
-        }
-        self
-    }
-    fn set_height(&mut self, height: i32) -> &mut Self {
-        {
-            self.base().height = height;
-        }
-        self
-    }
-    fn set_base_params(
-        &mut self,
-        prompt: String,
-        guidance: f32,
-        width: i32,
-        height: i32,
-        control_image: ImageType<'a>,
-        negative_prompt: String,
-        clip_skip: i32,
-        cfg_scale: f32,
-        sample_method: SampleMethodT,
-        sample_steps: i32,
-        seed: i32,
-        batch_count: i32,
-        control_strength: f32,
-        style_ratio: f32,
-        normalize_input: bool,
-        input_id_images_dir: String,
-        canny_preprocess: bool,
-        upscale_model: String,
-        upscale_repeats: i32,
-        output_path: String,
-    ) -> &mut Self {
-        {
-            self.base().prompt = prompt;
-            self.base().guidance = guidance;
-            self.base().width = width;
-            self.base().height = height;
-            self.base().control_image = control_image;
-            self.base().negative_prompt = negative_prompt;
-            self.base().clip_skip = clip_skip;
-            self.base().cfg_scale = cfg_scale;
-            self.base().sample_method = sample_method;
-            self.base().sample_steps = sample_steps;
             self.base().seed = seed;
+        }
+        self
+    }
+    fn set_batch_count(&mut self, batch_count: i32) -> &mut Self {
+        {
             self.base().batch_count = batch_count;
+        }
+        self
+    }
+    fn set_control_strength(&mut self, control_strength: f32) -> &mut Self {
+        {
             self.base().control_strength = control_strength;
+        }
+        self
+    }
+    fn set_style_ratio(&mut self, style_ratio: f32) -> &mut Self {
+        {
             self.base().style_ratio = style_ratio;
+        }
+        self
+    }
+    fn set_normalize_input(&mut self, normalize_input: bool) -> &mut Self {
+        {
             self.base().normalize_input = normalize_input;
+        }
+        self
+    }
+    fn set_input_id_images_dir(&mut self, input_id_images_dir: String) -> &mut Self {
+        {
             self.base().input_id_images_dir = input_id_images_dir;
+        }
+        self
+    }
+    fn set_canny_preprocess(&mut self, canny_preprocess: bool) -> &mut Self {
+        {
             self.base().canny_preprocess = canny_preprocess;
+        }
+        self
+    }
+    fn set_upscale_model(&mut self, upscale_model: String) -> &mut Self {
+        {
             self.base().upscale_model = upscale_model;
+        }
+        self
+    }
+    fn set_upscale_repeats(&mut self, upscale_repeats: i32) -> &mut Self {
+        {
             self.base().upscale_repeats = upscale_repeats;
+        }
+        self
+    }
+    fn set_output_path(&mut self, output_path: String) -> &mut Self {
+        {
             self.base().output_path = output_path;
         }
         self
@@ -334,6 +359,7 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
     }
     fn generate(&self) -> Result<(), WasmedgeSdErrno> {
         if self.common.prompt.is_empty() {
+            println!("self.common.prompt.is_empty()\n\n\n\n");
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
         let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
@@ -582,7 +608,7 @@ impl SDBuidler {
     }
 }
 
-//解析命令行参数，尤指 --mode
+//Parse command line arguments, for --mode
 impl std::str::FromStr for Task {
     type Err = String;
 
