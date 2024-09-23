@@ -710,6 +710,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_upscale_model(options.upscale_model)
                     .set_upscale_repeats(options.upscale_repeats)
                     .set_output_path(options.output_path)
+                    .set_n_threads(options.n_threads)
+                    .set_wtype(options.wtype)
                     .generate()
                     .unwrap();
             }
@@ -738,6 +740,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_upscale_model(options.upscale_model)
                     .set_upscale_repeats(options.upscale_repeats)
                     .set_output_path(options.output_path)
+                    .set_n_threads(options.n_threads)
+                    .set_wtype(options.wtype)
                     //addtional options for img2img
                     .set_image(ImageType::Path(&options.init_img))
                     .set_strength(options.strength)

@@ -76,6 +76,8 @@ pub struct BaseContext<'a> {
     pub upscale_model: String,
     pub upscale_repeats: i32,
     pub output_path: String,
+    pub n_threads: i32,
+    pub wtype: SdTypeT,
 }
 pub trait BaseFunction<'a> {
     fn base(&mut self) -> &mut BaseContext<'a>;
@@ -196,6 +198,18 @@ pub trait BaseFunction<'a> {
     fn set_output_path(&mut self, output_path: String) -> &mut Self {
         {
             self.base().output_path = output_path;
+        }
+        self
+    }
+    fn set_n_threads(&mut self, n_threads: i32) -> &mut Self {
+        {
+            self.base().n_threads = n_threads;
+        }
+        self
+    }
+    fn set_wtype(&mut self, wtype: SdTypeT) -> &mut Self {
+        {
+            self.base().wtype = wtype;
         }
         self
     }
@@ -341,6 +355,8 @@ impl StableDiffusion {
                 upscale_model: "".to_string(),
                 upscale_repeats: 1,
                 output_path: "".to_string(),
+                n_threads: -1,
+                wtype: SdTypeT::SdTypeCount,
             };
             match self.task {
                 Task::TextToImage => Ok(Context::TextToImage(TextToImage { common })),
@@ -388,6 +404,8 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
                 &self.common.output_path,
                 data.as_mut_ptr(),
                 BUF_LEN,
+                self.common.n_threads,
+                self.common.wtype,
             )
         };
         result?;
@@ -438,6 +456,8 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
                 &self.common.output_path,
                 data.as_mut_ptr(),
                 BUF_LEN,
+                self.common.n_threads,
+                self.common.wtype,
             )
         };
         result?;
