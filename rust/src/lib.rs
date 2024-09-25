@@ -76,24 +76,50 @@ pub struct BaseContext<'a> {
     pub upscale_model: String,
     pub upscale_repeats: i32,
     pub output_path: String,
+    pub n_threads: i32,
+    pub wtype: SdTypeT,
 }
 pub trait BaseFunction<'a> {
     fn base(&mut self) -> &mut BaseContext<'a>;
-    fn set_prompt(&mut self, prompt: &str) -> &mut Self {
+    fn set_prompt(&mut self, prompt: String) -> &mut Self {
         {
-            self.base().prompt = prompt.to_string();
+            self.base().prompt = prompt;
         }
         self
     }
-    fn set_negative_prompt(&mut self, negative_prompt: impl Into<String>) -> &mut Self {
+    fn set_guidance(&mut self, guidance: f32) -> &mut Self {
         {
-            self.base().negative_prompt = negative_prompt.into();
+            self.base().guidance = guidance;
         }
         self
     }
-    fn set_output_path(&mut self, output_path: &str) -> &mut Self {
+    fn set_width(&mut self, width: i32) -> &mut Self {
         {
-            self.base().output_path = output_path.to_string();
+            self.base().width = width;
+        }
+        self
+    }
+    fn set_height(&mut self, height: i32) -> &mut Self {
+        {
+            self.base().height = height;
+        }
+        self
+    }
+    fn set_control_image(&mut self, control_image: ImageType<'a>) -> &mut Self {
+        {
+            self.base().control_image = control_image;
+        }
+        self
+    }
+    fn set_negative_prompt(&mut self, negative_prompt: String) -> &mut Self {
+        {
+            self.base().negative_prompt = negative_prompt;
+        }
+        self
+    }
+    fn set_clip_skip(&mut self, clip_skip: i32) -> &mut Self {
+        {
+            self.base().clip_skip = clip_skip;
         }
         self
     }
@@ -115,15 +141,75 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_width(&mut self, width: i32) -> &mut Self {
+    fn set_seed(&mut self, seed: i32) -> &mut Self {
         {
-            self.base().width = width;
+            self.base().seed = seed;
         }
         self
     }
-    fn set_height(&mut self, height: i32) -> &mut Self {
+    fn set_batch_count(&mut self, batch_count: i32) -> &mut Self {
         {
-            self.base().height = height;
+            self.base().batch_count = batch_count;
+        }
+        self
+    }
+    fn set_control_strength(&mut self, control_strength: f32) -> &mut Self {
+        {
+            self.base().control_strength = control_strength;
+        }
+        self
+    }
+    fn set_style_ratio(&mut self, style_ratio: f32) -> &mut Self {
+        {
+            self.base().style_ratio = style_ratio;
+        }
+        self
+    }
+    fn set_normalize_input(&mut self, normalize_input: bool) -> &mut Self {
+        {
+            self.base().normalize_input = normalize_input;
+        }
+        self
+    }
+    fn set_input_id_images_dir(&mut self, input_id_images_dir: String) -> &mut Self {
+        {
+            self.base().input_id_images_dir = input_id_images_dir;
+        }
+        self
+    }
+    fn set_canny_preprocess(&mut self, canny_preprocess: bool) -> &mut Self {
+        {
+            self.base().canny_preprocess = canny_preprocess;
+        }
+        self
+    }
+    fn set_upscale_model(&mut self, upscale_model: String) -> &mut Self {
+        {
+            self.base().upscale_model = upscale_model;
+        }
+        self
+    }
+    fn set_upscale_repeats(&mut self, upscale_repeats: i32) -> &mut Self {
+        {
+            self.base().upscale_repeats = upscale_repeats;
+        }
+        self
+    }
+    fn set_output_path(&mut self, output_path: String) -> &mut Self {
+        {
+            self.base().output_path = output_path;
+        }
+        self
+    }
+    fn set_n_threads(&mut self, n_threads: i32) -> &mut Self {
+        {
+            self.base().n_threads = n_threads;
+        }
+        self
+    }
+    fn set_wtype(&mut self, wtype: SdTypeT) -> &mut Self {
+        {
+            self.base().wtype = wtype;
         }
         self
     }
@@ -269,6 +355,8 @@ impl StableDiffusion {
                 upscale_model: "".to_string(),
                 upscale_repeats: 1,
                 output_path: "".to_string(),
+                n_threads: -1,
+                wtype: SdTypeT::SdTypeCount,
             };
             match self.task {
                 Task::TextToImage => Ok(Context::TextToImage(TextToImage { common })),
@@ -279,12 +367,6 @@ impl StableDiffusion {
                 })),
             }
         }
-    }
-    pub fn set_lora_model_dir(&mut self, lora_model_dir: &str) -> &mut Self {
-        {
-            self.lora_model_dir = lora_model_dir.to_string();
-        }
-        self
     }
 }
 impl<'a> BaseFunction<'a> for TextToImage<'a> {
@@ -321,6 +403,8 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
                 &self.common.output_path,
                 data.as_mut_ptr(),
                 BUF_LEN,
+                self.common.n_threads,
+                self.common.wtype,
             )
         };
         result?;
@@ -371,6 +455,8 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
                 &self.common.output_path,
                 data.as_mut_ptr(),
                 BUF_LEN,
+                self.common.n_threads,
+                self.common.wtype,
             )
         };
         result?;
@@ -453,24 +539,47 @@ impl SDBuidler {
         Ok(self)
     }
 
+    pub fn with_taesd_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation("The path to the taesd file is not valid unicode.".into())
+        })?;
+        self.sd.taesd_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_control_net_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation("The path to the control net file is not valid unicode.".into())
+        })?;
+        self.sd.control_net_path = path.into();
+        Ok(self)
+    }
+
+    //lora_model_dir
     pub fn with_lora_model_dir(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
         let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::InvalidPath(
-                "The path to the lora model directory is not valid unicode.".into(),
-            )
+            SDError::Operation("The path to the lora model dir is not valid unicode.".into())
         })?;
         self.sd.lora_model_dir = path.into();
         Ok(self)
     }
 
-    pub fn clip_on_cpu(mut self, enable: bool) -> Self {
-        self.sd.clip_on_cpu = enable;
-        self
+    pub fn with_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation("The path to the embeddings dir is not valid unicode.".into())
+        })?;
+        self.sd.embed_dir = path.into();
+        Ok(self)
     }
 
-    pub fn vae_on_cpu(mut self, enable: bool) -> Self {
-        self.sd.vae_on_cpu = enable;
-        self
+    pub fn with_stacked_id_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::Operation(
+                "The path to the stacked id embeddings dir is not valid unicode.".into(),
+            )
+        })?;
+        self.sd.id_embed_dir = path.into();
+        Ok(self)
     }
 
     pub fn enable_vae_tiling(mut self, enable: bool) -> Self {
@@ -483,7 +592,50 @@ impl SDBuidler {
         self
     }
 
+    pub fn with_wtype(mut self, wtype: SdTypeT) -> Self {
+        self.sd.wtype = wtype;
+        self
+    }
+
+    pub fn with_rng_type(mut self, rng_type: RngTypeT) -> Self {
+        self.sd.rng_type = rng_type;
+        self
+    }
+
+    pub fn with_schedule(mut self, schedule: ScheduleT) -> Self {
+        self.sd.schedule = schedule;
+        self
+    }
+
+    pub fn enable_clip_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.clip_on_cpu = enable;
+        self
+    }
+
+    pub fn enable_control_net_cpu(mut self, enable: bool) -> Self {
+        self.sd.control_net_cpu = enable;
+        self
+    }
+
+    pub fn enable_vae_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.vae_on_cpu = enable;
+        self
+    }
+
     pub fn build(self) -> StableDiffusion {
         self.sd
+    }
+}
+
+//Parse command line arguments, for --mode
+impl std::str::FromStr for Task {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "txt2img" => Ok(Task::TextToImage),
+            "img2img" => Ok(Task::ImageToImage),
+            _ => Err(format!("Invalid mode: {}", s)),
+        }
     }
 }

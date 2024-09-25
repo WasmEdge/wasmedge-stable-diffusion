@@ -132,6 +132,77 @@ fn parse_image(image: &ImageType) -> (i32, i32) {
         }
     }
 }
+
+impl SdTypeT {
+    pub fn from_index(index: usize) -> Result<SdTypeT, String> {
+        match index {
+            0 => Ok(SdTypeT::SdTypeF32),
+            1 => Ok(SdTypeT::SdTypeF16),
+            2 => Ok(SdTypeT::SdTypeQ4_0),
+            3 => Ok(SdTypeT::SdTypeQ4_1),
+            // 4 => Ok(SdTypeT::SdTypeQ4_2),// support has been removed
+            // 5 => Ok(SdTypeT::SdTypeQ4_3),// support has been removed
+            6 => Ok(SdTypeT::SdTypeQ5_0),
+            7 => Ok(SdTypeT::SdTypeQ5_1),
+            8 => Ok(SdTypeT::SdTypeQ8_0),
+            9 => Ok(SdTypeT::SdTypeQ8_1),
+            10 => Ok(SdTypeT::SdTypeQ2K),
+            11 => Ok(SdTypeT::SdTypeQ3K),
+            12 => Ok(SdTypeT::SdTypeQ4K),
+            13 => Ok(SdTypeT::SdTypeQ5K),
+            14 => Ok(SdTypeT::SdTypeQ6K),
+            15 => Ok(SdTypeT::SdTypeQ8K),
+            16 => Ok(SdTypeT::SdTypeIq2Xxs),
+            17 => Ok(SdTypeT::SdTypeIq2Xs),
+            18 => Ok(SdTypeT::SdTypeIq3Xxs),
+            19 => Ok(SdTypeT::SdTypeIq1S),
+            20 => Ok(SdTypeT::SdTypeIq4Nl),
+            21 => Ok(SdTypeT::SdTypeIq3S),
+            22 => Ok(SdTypeT::SdTypeIq2S),
+            23 => Ok(SdTypeT::SdTypeIq4Xs),
+            24 => Ok(SdTypeT::SdTypeI8),
+            25 => Ok(SdTypeT::SdTypeI16),
+            26 => Ok(SdTypeT::SdTypeI32),
+            27 => Ok(SdTypeT::SdTypeI64),
+            28 => Ok(SdTypeT::SdTypeF64),
+            29 => Ok(SdTypeT::SdTypeIq1M),
+            30 => Ok(SdTypeT::SdTypeBf16),
+            31 => Ok(SdTypeT::SdTypeQ4044),
+            32 => Ok(SdTypeT::SdTypeQ4048),
+            33 => Ok(SdTypeT::SdTypeQ4088),
+            _ => Ok(SdTypeT::SdTypeCount),
+        }
+    }
+}
+impl SampleMethodT {
+    pub fn from_index(index: usize) -> Result<SampleMethodT, String> {
+        match index {
+            0 => Ok(SampleMethodT::EULERA),
+            1 => Ok(SampleMethodT::EULER),
+            2 => Ok(SampleMethodT::HEUN),
+            3 => Ok(SampleMethodT::DPM2),
+            4 => Ok(SampleMethodT::DPMPP2SA),
+            5 => Ok(SampleMethodT::DPMPP2M),
+            6 => Ok(SampleMethodT::DPMPP2Mv2),
+            7 => Ok(SampleMethodT::IPNDM),
+            8 => Ok(SampleMethodT::IPNDMV),
+            _ => Ok(SampleMethodT::LCM),
+        }
+    }
+}
+impl ScheduleT {
+    pub fn from_index(index: usize) -> Result<ScheduleT, String> {
+        match index {
+            0 => Ok(ScheduleT::DEFAULT),
+            1 => Ok(ScheduleT::DISCRETE),
+            2 => Ok(ScheduleT::KARRAS),
+            3 => Ok(ScheduleT::EXPONENTIAL),
+            4 => Ok(ScheduleT::AYS),
+            _ => Ok(ScheduleT::GITS),
+        }
+    }
+}
+
 /// # Safety
 /// This will call an external wasm function
 pub unsafe fn convert(
@@ -282,6 +353,8 @@ pub unsafe fn text_to_image(
     output_path: &str,
     output_buf: *mut u8,
     out_buffer_max_size: i32,
+    n_threads: i32,
+    wtype: SdTypeT,
 ) -> Result<u32, WasmedgeSdErrno> {
     let prompt_ptr = prompt.as_ptr() as i32;
     let prompt_len = prompt.len() as i32;
@@ -301,6 +374,7 @@ pub unsafe fn text_to_image(
     let output_buf_ptr = output_buf as i32;
     let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
+    let wtype = wtype as i32;
     let result = wasmedge_stablediffusion::text_to_image(
         prompt_ptr,
         prompt_len,
@@ -332,6 +406,8 @@ pub unsafe fn text_to_image(
         output_buf_ptr,
         out_buffer_max_size_,
         write_bytes.as_mut_ptr() as i32,
+        n_threads,
+        wtype,
     );
     if result != 0 {
         Err(WasmedgeSdErrno(result as u32))
@@ -368,6 +444,8 @@ pub unsafe fn image_to_image(
     output_path: &str,
     output_buf: *mut u8,
     out_buffer_max_size: i32,
+    n_threads: i32,
+    wtype: SdTypeT,
 ) -> Result<u32, WasmedgeSdErrno> {
     let (image_ptr, image_len) = parse_image(image);
     let (control_image_ptr, control_image_len) = parse_image(control_image);
@@ -388,6 +466,7 @@ pub unsafe fn image_to_image(
     let output_buf_ptr = output_buf as i32;
     let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
+    let wtype = wtype as i32;
     let result = wasmedge_stablediffusion::image_to_image(
         image_ptr,
         image_len,
@@ -422,6 +501,8 @@ pub unsafe fn image_to_image(
         output_buf_ptr,
         out_buffer_max_size_,
         write_bytes.as_mut_ptr() as i32,
+        n_threads,
+        wtype,
     );
     if result != 0 {
         Err(WasmedgeSdErrno(result as u32))
@@ -499,6 +580,8 @@ pub mod wasmedge_stablediffusion {
             out_buffer_ptr: i32,
             out_buffer_max_size: i32,
             bytes_written_ptr: i32,
+            n_threads: i32,
+            wtype: i32,
         ) -> i32;
 
         pub fn text_to_image(
@@ -532,6 +615,8 @@ pub mod wasmedge_stablediffusion {
             out_buffer_ptr: i32,
             out_buffer_max_size: i32,
             bytes_written_ptr: i32,
+            n_threads: i32,
+            wtype: i32,
         ) -> i32;
 
         pub fn convert(

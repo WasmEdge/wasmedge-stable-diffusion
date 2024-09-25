@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 wasmedge_stable_diffusion = {path="../rust"}
+clap = { version = "4.4.6", features = ["cargo"] }
+rand = "0.8"
