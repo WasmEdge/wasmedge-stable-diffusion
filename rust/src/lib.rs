@@ -375,7 +375,6 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
     }
     fn generate(&self) -> Result<(), WasmedgeSdErrno> {
         if self.common.prompt.is_empty() {
-            println!("self.common.prompt.is_empty()\n\n\n\n");
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
         let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
