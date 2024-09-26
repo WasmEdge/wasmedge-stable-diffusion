@@ -18,7 +18,7 @@ fn main() {
     if let Context::ImageToImage(mut image_to_image) = context.create_context().unwrap() {
         image_to_image
             .set_prompt("with blue eyes")
-            .set_image(ImageType::Path("output.png"))
+            .set_image(ImageType::Path("output.png".to_string()))
             .set_output_path("output2.png")
             .generate()
             .unwrap();
