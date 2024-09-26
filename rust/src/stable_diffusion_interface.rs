@@ -118,8 +118,8 @@ pub enum ScheduleT {
     GITS = 5,
 }
 #[derive(Debug)]
-pub enum ImageType<'a> {
-    Path(&'a str),
+pub enum ImageType {
+    Path(String),
 }
 fn parse_image(image: &ImageType) -> (i32, i32) {
     match image {

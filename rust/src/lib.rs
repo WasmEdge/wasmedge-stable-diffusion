@@ -24,9 +24,9 @@ pub enum Task {
 }
 
 #[derive(Debug)]
-pub enum Context<'a> {
-    TextToImage(TextToImage<'a>),
-    ImageToImage(ImageToImage<'a>),
+pub enum Context {
+    TextToImage(TextToImage),
+    ImageToImage(ImageToImage),
 }
 
 #[derive(Debug)]
@@ -54,13 +54,13 @@ pub struct StableDiffusion {
 }
 
 #[derive(Debug)]
-pub struct BaseContext<'a> {
+pub struct BaseContext {
     pub session_id: u32,
     pub prompt: String,
     pub guidance: f32,
     pub width: i32,
     pub height: i32,
-    pub control_image: ImageType<'a>,
+    pub control_image: ImageType,
     pub negative_prompt: String,
     pub clip_skip: i32,
     pub cfg_scale: f32,
@@ -77,8 +77,8 @@ pub struct BaseContext<'a> {
     pub upscale_repeats: i32,
     pub output_path: String,
 }
-pub trait BaseFunction<'a> {
-    fn base(&mut self) -> &mut BaseContext<'a>;
+pub trait BaseFunction {
+    fn base(&mut self) -> &mut BaseContext;
     fn set_prompt(&mut self, prompt: &str) -> &mut Self {
         {
             self.base().prompt = prompt.to_string();
@@ -131,14 +131,14 @@ pub trait BaseFunction<'a> {
 }
 
 #[derive(Debug)]
-pub struct TextToImage<'a> {
-    pub common: BaseContext<'a>,
+pub struct TextToImage {
+    pub common: BaseContext,
 }
 
 #[derive(Debug)]
-pub struct ImageToImage<'a> {
-    pub common: BaseContext<'a>,
-    pub image: ImageType<'a>,
+pub struct ImageToImage {
+    pub common: BaseContext,
+    pub image: ImageType,
     pub strength: f32,
 }
 
@@ -253,7 +253,7 @@ impl StableDiffusion {
                 guidance: 3.5,
                 width: 512,
                 height: 512,
-                control_image: ImageType::Path(""),
+                control_image: ImageType::Path("".to_string()),
                 negative_prompt: "".to_string(),
                 clip_skip: -1,
                 cfg_scale: 7.0,
@@ -274,7 +274,7 @@ impl StableDiffusion {
                 Task::TextToImage => Ok(Context::TextToImage(TextToImage { common })),
                 Task::ImageToImage => Ok(Context::ImageToImage(ImageToImage {
                     common,
-                    image: ImageType::Path(""),
+                    image: ImageType::Path("".to_string()),
                     strength: 0.75,
                 })),
             }
@@ -287,8 +287,8 @@ impl StableDiffusion {
         self
     }
 }
-impl<'a> BaseFunction<'a> for TextToImage<'a> {
-    fn base(&mut self) -> &mut BaseContext<'a> {
+impl<'a> BaseFunction for TextToImage {
+    fn base(&mut self) -> &mut BaseContext {
         &mut self.common
     }
     fn generate(&self) -> Result<(), WasmedgeSdErrno> {
@@ -328,15 +328,15 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
     }
 }
 
-impl<'a> BaseFunction<'a> for ImageToImage<'a> {
-    fn base(&mut self) -> &mut BaseContext<'a> {
+impl<'a> BaseFunction for ImageToImage {
+    fn base(&mut self) -> &mut BaseContext {
         &mut self.common
     }
     fn generate(&self) -> Result<(), WasmedgeSdErrno> {
         if self.common.prompt.is_empty() {
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
-        match self.image {
+        match &self.image {
             ImageType::Path(path) => {
                 if path.is_empty() {
                     return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
@@ -377,8 +377,8 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
         Ok(())
     }
 }
-impl<'a> ImageToImage<'a> {
-    pub fn set_image(&mut self, image: ImageType<'a>) -> &mut Self {
+impl ImageToImage {
+    pub fn set_image(&mut self, image: ImageType) -> &mut Self {
         {
             self.image = image;
         }
