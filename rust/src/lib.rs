@@ -287,7 +287,7 @@ impl StableDiffusion {
         self
     }
 }
-impl<'a> BaseFunction for TextToImage {
+impl BaseFunction for TextToImage {
     fn base(&mut self) -> &mut BaseContext {
         &mut self.common
     }
@@ -328,7 +328,7 @@ impl<'a> BaseFunction for TextToImage {
     }
 }
 
-impl<'a> BaseFunction for ImageToImage {
+impl BaseFunction for ImageToImage {
     fn base(&mut self) -> &mut BaseContext {
         &mut self.common
     }
