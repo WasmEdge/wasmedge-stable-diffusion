@@ -85,15 +85,39 @@ pub trait BaseFunction {
         }
         self
     }
+    fn set_guidance(&mut self, guidance: f32) -> &mut Self {
+        {
+            self.base().guidance = guidance;
+        }
+        self
+    }
+    fn set_width(&mut self, width: i32) -> &mut Self {
+        {
+            self.base().width = width;
+        }
+        self
+    }
+    fn set_height(&mut self, height: i32) -> &mut Self {
+        {
+            self.base().height = height;
+        }
+        self
+    }
+    fn set_control_image(&mut self, control_image: ImageType) -> &mut Self {
+        {
+            self.base().control_image = control_image;
+        }
+        self
+    }
     fn set_negative_prompt(&mut self, negative_prompt: impl Into<String>) -> &mut Self {
         {
             self.base().negative_prompt = negative_prompt.into();
         }
         self
     }
-    fn set_output_path(&mut self, output_path: &str) -> &mut Self {
+    fn set_clip_skip(&mut self, clip_skip: i32) -> &mut Self {
         {
-            self.base().output_path = output_path.to_string();
+            self.base().clip_skip = clip_skip;
         }
         self
     }
@@ -115,15 +139,63 @@ pub trait BaseFunction {
         }
         self
     }
-    fn set_width(&mut self, width: i32) -> &mut Self {
+    fn set_seed(&mut self, seed: i32) -> &mut Self {
         {
-            self.base().width = width;
+            self.base().seed = seed;
         }
         self
     }
-    fn set_height(&mut self, height: i32) -> &mut Self {
+    fn set_batch_count(&mut self, batch_count: i32) -> &mut Self {
         {
-            self.base().height = height;
+            self.base().batch_count = batch_count;
+        }
+        self
+    }
+    fn set_control_strength(&mut self, control_strength: f32) -> &mut Self {
+        {
+            self.base().control_strength = control_strength;
+        }
+        self
+    }
+    fn set_style_ratio(&mut self, style_ratio: f32) -> &mut Self {
+        {
+            self.base().style_ratio = style_ratio;
+        }
+        self
+    }
+    fn enable_normalize_input(&mut self, flag: bool) -> &mut Self {
+        {
+            self.base().normalize_input = flag;
+        }
+        self
+    }
+    fn set_input_id_images_dir(&mut self, input_id_images_dir: &str) -> &mut Self {
+        {
+            self.base().input_id_images_dir = input_id_images_dir.to_string();
+        }
+        self
+    }
+    fn enable_canny_preprocess(&mut self, flag: bool) -> &mut Self {
+        {
+            self.base().canny_preprocess = flag;
+        }
+        self
+    }
+    fn set_upscale_model(&mut self, upscale_model: &str) -> &mut Self {
+        {
+            self.base().upscale_model = upscale_model.to_string();
+        }
+        self
+    }
+    fn set_upscale_repeats(&mut self, upscale_repeats: i32) -> &mut Self {
+        {
+            self.base().upscale_repeats = upscale_repeats;
+        }
+        self
+    }
+    fn set_output_path(&mut self, output_path: &str) -> &mut Self {
+        {
+            self.base().output_path = output_path.to_string();
         }
         self
     }
