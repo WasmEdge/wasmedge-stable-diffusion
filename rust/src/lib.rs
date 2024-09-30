@@ -267,6 +267,10 @@ impl BaseFunction for ImageToImage {
             }
         }
         let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
+
+        // ! debug
+        println!("*** sample steps: {:?}", self.common.sample_steps,);
+
         let result = unsafe {
             stable_diffusion_interface::image_to_image(
                 &self.image,
