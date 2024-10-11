@@ -389,9 +389,6 @@ pub unsafe fn image_to_image(
     let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
 
-    // ! debug
-    println!("***** steps: {:?}", sample_steps);
-
     let result = wasmedge_stablediffusion::image_to_image(
         image_ptr,
         image_len,
