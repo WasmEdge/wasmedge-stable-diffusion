@@ -387,6 +387,14 @@ impl SDBuidler {
         Ok(self)
     }
 
+    pub fn with_controlnet_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the controlnet file is not valid unicode.".into())
+        })?;
+        self.sd.control_net_path = path.into();
+        Ok(self)
+    }
+
     pub fn clip_on_cpu(mut self, enable: bool) -> Self {
         self.sd.clip_on_cpu = enable;
         self
