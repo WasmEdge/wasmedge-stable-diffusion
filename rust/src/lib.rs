@@ -387,6 +387,15 @@ impl SDBuidler {
         Ok(self)
     }
 
+    pub fn use_control_net(mut self, path: impl AsRef<Path>, on_cpu: bool) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the controlnet file is not valid unicode.".into())
+        })?;
+        self.sd.control_net_path = path.into();
+        self.sd.control_net_cpu = on_cpu;
+        Ok(self)
+    }
+
     pub fn clip_on_cpu(mut self, enable: bool) -> Self {
         self.sd.clip_on_cpu = enable;
         self
@@ -553,6 +562,7 @@ impl StableDiffusion {
             }
         }
     }
+
     pub fn set_lora_model_dir(&mut self, lora_model_dir: &str) -> &mut Self {
         {
             self.lora_model_dir = lora_model_dir.to_string();
