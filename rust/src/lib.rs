@@ -562,4 +562,11 @@ impl StableDiffusion {
             }
         }
     }
+
+    pub fn set_lora_model_dir(&mut self, lora_model_dir: &str) -> &mut Self {
+        {
+            self.lora_model_dir = lora_model_dir.to_string();
+        }
+        self
+    }
 }
