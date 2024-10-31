@@ -10,6 +10,7 @@ const BUF_LEN: i32 = 1000000;
 
 pub type SDResult<T> = Result<T, SDError>;
 
+/// Represents Quantization task.
 pub struct Quantization {
     pub model_path: String,
     pub vae_model_path: String,
@@ -17,10 +18,15 @@ pub struct Quantization {
     pub wtype: SdTypeT,
 }
 impl Quantization {
-    pub fn new(model_path: &str, output_path: &str, wtype: SdTypeT) -> Quantization {
+    pub fn new(
+        model_path: &str,
+        vae_model_path: String,
+        output_path: &str,
+        wtype: SdTypeT,
+    ) -> Quantization {
         Quantization {
             model_path: model_path.to_string(),
-            vae_model_path: "".to_string(),
+            vae_model_path,
             output_path: output_path.to_string(),
             wtype,
         }
@@ -41,6 +47,19 @@ impl Quantization {
 pub enum Task {
     TextToImage,
     ImageToImage,
+    Convert,
+}
+// Parse command line arguments, for --mode
+impl std::str::FromStr for Task {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "txt2img" => Ok(Task::TextToImage),
+            "img2img" => Ok(Task::ImageToImage),
+            "convert" => Ok(Task::Convert),
+            _ => Err(format!("Invalid mode: {}", s)),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -75,9 +94,9 @@ pub struct BaseContext {
 }
 pub trait BaseFunction {
     fn base(&mut self) -> &mut BaseContext;
-    fn set_prompt(&mut self, prompt: &str) -> &mut Self {
+    fn set_prompt(&mut self, prompt: String) -> &mut Self {
         {
-            self.base().prompt = prompt.to_string();
+            self.base().prompt = prompt;
         }
         self
     }
@@ -159,27 +178,27 @@ pub trait BaseFunction {
         }
         self
     }
-    fn enable_normalize_input(&mut self, flag: bool) -> &mut Self {
+    fn enable_normalize_input(&mut self, normalize_input: bool) -> &mut Self {
         {
-            self.base().normalize_input = flag;
+            self.base().normalize_input = normalize_input;
         }
         self
     }
-    fn set_input_id_images_dir(&mut self, input_id_images_dir: &str) -> &mut Self {
+    fn set_input_id_images_dir(&mut self, input_id_images_dir: String) -> &mut Self {
         {
-            self.base().input_id_images_dir = input_id_images_dir.to_string();
+            self.base().input_id_images_dir = input_id_images_dir;
         }
         self
     }
-    fn enable_canny_preprocess(&mut self, flag: bool) -> &mut Self {
+    fn enable_canny_preprocess(&mut self, canny_preprocess: bool) -> &mut Self {
         {
-            self.base().canny_preprocess = flag;
+            self.base().canny_preprocess = canny_preprocess;
         }
         self
     }
-    fn set_upscale_model(&mut self, upscale_model: &str) -> &mut Self {
+    fn set_upscale_model(&mut self, upscale_model: String) -> &mut Self {
         {
-            self.base().upscale_model = upscale_model.to_string();
+            self.base().upscale_model = upscale_model;
         }
         self
     }
@@ -189,16 +208,16 @@ pub trait BaseFunction {
         }
         self
     }
-    fn set_output_path(&mut self, output_path: &str) -> &mut Self {
+    fn set_output_path(&mut self, output_path: String) -> &mut Self {
         {
-            self.base().output_path = output_path.to_string();
+            self.base().output_path = output_path;
         }
         self
     }
     fn generate(&self) -> Result<(), WasmedgeSdErrno>;
 }
 
-/// Represents computation context for text-to-image task.
+/// Represents computation context for text-to-image task
 #[derive(Debug)]
 pub struct TextToImage {
     pub common: BaseContext,
@@ -377,6 +396,14 @@ impl SDBuidler {
         Ok(self)
     }
 
+    pub fn with_taesd_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the taesd file is not valid unicode.".into())
+        })?;
+        self.sd.taesd_path = path.into();
+        Ok(self)
+    }
+
     pub fn with_lora_model_dir(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
         let path = path.as_ref().to_str().ok_or_else(|| {
             SDError::InvalidPath(
@@ -396,13 +423,41 @@ impl SDBuidler {
         Ok(self)
     }
 
-    pub fn clip_on_cpu(mut self, enable: bool) -> Self {
-        self.sd.clip_on_cpu = enable;
+    pub fn with_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the embeddings dir is not valid unicode.".into())
+        })?;
+        self.sd.embed_dir = path.into();
+        Ok(self)
+    }
+
+    pub fn with_stacked_id_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath(
+                "The path to the stacked id embeddings dir is not valid unicode.".into(),
+            )
+        })?;
+        self.sd.id_embed_dir = path.into();
+        Ok(self)
+    }
+
+    pub fn with_n_threads(mut self, n_threads: i32) -> Self {
+        self.sd.n_threads = n_threads;
         self
     }
 
-    pub fn vae_on_cpu(mut self, enable: bool) -> Self {
-        self.sd.vae_on_cpu = enable;
+    pub fn with_wtype(mut self, wtype: SdTypeT) -> Self {
+        self.sd.wtype = wtype;
+        self
+    }
+
+    pub fn with_rng_type(mut self, rng_type: RngTypeT) -> Self {
+        self.sd.rng_type = rng_type;
+        self
+    }
+
+    pub fn with_schedule(mut self, schedule: ScheduleT) -> Self {
+        self.sd.schedule = schedule;
         self
     }
 
@@ -411,8 +466,13 @@ impl SDBuidler {
         self
     }
 
-    pub fn with_n_threads(mut self, n_threads: i32) -> Self {
-        self.sd.n_threads = n_threads;
+    pub fn enable_clip_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.clip_on_cpu = enable;
+        self
+    }
+
+    pub fn enable_vae_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.vae_on_cpu = enable;
         self
     }
 
@@ -450,6 +510,7 @@ impl StableDiffusion {
         let vae_decode_only = match task {
             Task::TextToImage => true,
             Task::ImageToImage => false,
+            Task::Convert => false,
         };
         StableDiffusion {
             task,
@@ -479,6 +540,7 @@ impl StableDiffusion {
         let vae_decode_only = match task {
             Task::TextToImage => true,
             Task::ImageToImage => false,
+            Task::Convert => false,
         };
         StableDiffusion {
             task,
@@ -559,14 +621,8 @@ impl StableDiffusion {
                     image: ImageType::Path("".to_string()),
                     strength: 0.75,
                 })),
+                Task::Convert => todo!(),
             }
         }
-    }
-
-    pub fn set_lora_model_dir(&mut self, lora_model_dir: &str) -> &mut Self {
-        {
-            self.lora_model_dir = lora_model_dir.to_string();
-        }
-        self
     }
 }
