@@ -1,47 +1,17 @@
-use wasmedge_stable_diffusion::stable_diffusion_interface::{ImageType, SdTypeT, RngTypeT, SampleMethodT, ScheduleT};
-use wasmedge_stable_diffusion::{BaseFunction, Context, Quantization, Task, SDBuidler};
+use wasmedge_stable_diffusion::stable_diffusion_interface::{
+    ImageType, RngTypeT, SampleMethodT, ScheduleT, SdTypeT,
+};
+use wasmedge_stable_diffusion::{BaseFunction, Context, Quantization, SDBuidler, Task};
 
 use clap::{crate_version, Arg, ArgAction, Command};
-use std::str::FromStr;
 use rand::Rng;
+use std::str::FromStr;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const WTYPE_METHODS: [&str; 35] = [
-    "f32",
-    "f16",
-    "q4_0",
-    "q4_1",
-    "",
-    "",
-    "q5_0",
-    "q5_1",
-    "q8_0",
-    "q8_1",
-    "q2k",
-    "q3k",
-    "q4k",
-    "q5k",
-    "q6k",
-    "q8k",
-    "iq2Xxs",
-    "iq2Xs",
-    "iq3Xxs",
-    "iq1S",
-    "iq4N1",
-    "iq3S",
-    "iq2S",
-    "iq4Xs",
-    "i8",
-    "i16",
-    "i32",
-    "i64",
-    "f64",
-    "iq1M",
-    "bf16",
-    "q4044",
-    "q4048",
-    "q4088",
-    "count"
+    "f32", "f16", "q4_0", "q4_1", "", "", "q5_0", "q5_1", "q8_0", "q8_1", "q2k", "q3k", "q4k",
+    "q5k", "q6k", "q8k", "iq2Xxs", "iq2Xs", "iq3Xxs", "iq1S", "iq4N1", "iq3S", "iq2S", "iq4Xs",
+    "i8", "i16", "i32", "i64", "f64", "iq1M", "bf16", "q4044", "q4048", "q4088", "count",
 ];
 //Sampling Methods
 const SAMPLE_METHODS: [&str; 10] = [
@@ -167,7 +137,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("normalize-input")
                 .help("normalize PHOTOMAKER input id images.")
                 .action(ArgAction::SetTrue),
-        )                        
+        )
         .arg(
             Arg::new("upscale_model")
                 .long("upscale-model")
@@ -239,7 +209,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("IMAGE")
                 .help("path to the input image, required by img2img.")
                 .default_value("./output.png"),
-        )             
+        )
         .arg(
             Arg::new("control_image")
                 .long("control-image")
@@ -355,7 +325,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("STEPS")
                 .help("number of sample steps (default: 20).")
                 .default_value("20"),
-        )           
+        )
         .arg(
             Arg::new("rng_type")
                 .long("rng")
@@ -407,7 +377,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .value_name("N")
                 .help("ignore last layers of CLIP network; 1 ignores none, 2 ignores one layer (default: -1), <= 0 represents unspecified, will be 1 for SD1.x, 2 for SD2.x.")
                 .default_value("-1"),
-        )                        
+        )
         .arg(
             Arg::new("vae_tiling")
                 .long("vae-tiling")
@@ -446,7 +416,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         )
         .after_help("run at the dir of .wasm, Example:wasmedge --dir .:. ./target/wasm32-wasi/release/wasmedge_stable_diffusion_example.wasm -m ../../models/stable-diffusion-v1-4-Q8_0.gguf -M img2img\n")
         .get_matches();
-    
+
     //init the paraments--------------------------------------------------------------
     let mut options = Options::default();
 
@@ -454,7 +424,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let sd_mode = matches.get_one::<String>("mode").unwrap();
     let task = Task::from_str(sd_mode)?;
     options.mode = sd_mode.to_string();
-    
+
     //n_threads
     let n_threads = matches.get_one::<i32>("n_threads").unwrap();
     options.n_threads = *n_threads as i32;
@@ -462,7 +432,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //model
     let sd_model = matches.get_one::<String>("model").unwrap();
     options.model_path = sd_model.to_string();
-    
+
     //clip_l_path
     let clip_l_path = matches.get_one::<String>("clip_l_path").unwrap();
     options.clip_l_path = clip_l_path.to_string();
@@ -492,13 +462,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     options.embeddings_path = embeddings_path.to_string();
 
     //stacked_id_embd_dir
-    let stacked_id_embd_dir = matches
-        .get_one::<String>("stacked_id_embd_dir").unwrap();
+    let stacked_id_embd_dir = matches.get_one::<String>("stacked_id_embd_dir").unwrap();
     options.stacked_id_embd_dir = stacked_id_embd_dir.to_string();
 
     //input_id_images_dir
-    let input_id_images_dir = matches
-        .get_one::<String>("input_id_images_dir").unwrap();
+    let input_id_images_dir = matches.get_one::<String>("input_id_images_dir").unwrap();
     options.input_id_images_dir = input_id_images_dir.to_string();
 
     //normalize-input
@@ -521,7 +489,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let wtype_found = WTYPE_METHODS
         .iter()
         .position(|&method| method == wtype_selected)
-        .ok_or(format!("Invalid wtype: {}",wtype_selected))?;
+        .ok_or(format!("Invalid wtype: {}", wtype_selected))?;
     let wtype = SdTypeT::from_index(wtype_found)?;
     options.wtype = wtype;
 
@@ -534,7 +502,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if sd_mode == "img2img" {
         options.init_img = img.to_string();
     };
-    
+
     //control_image
     let control_image = matches.get_one::<String>("control_image").unwrap();
     options.control_image = control_image.to_string();
@@ -557,7 +525,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     //strength
     let strength = matches.get_one::<f32>("strength").unwrap();
-    if *strength < 0.0  || *strength > 1.0 {
+    if *strength < 0.0 || *strength > 1.0 {
         return Err("Error: can only work with strength in [0.0, 1.0]".into());
     }
     options.strength = *strength as f32;
@@ -589,11 +557,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     options.width = *width as i32;
 
     //sampling_method
-    let sampling_method_selected = matches .get_one::<String>("sampling_method").unwrap();
+    let sampling_method_selected = matches.get_one::<String>("sampling_method").unwrap();
     let sample_method_found = SAMPLE_METHODS
         .iter()
         .position(|&method| method == sampling_method_selected)
-        .ok_or(format!("Invalid sampling method: {}",sampling_method_selected))?;
+        .ok_or(format!(
+            "Invalid sampling method: {}",
+            sampling_method_selected
+        ))?;
     let sample_method = SampleMethodT::from_index(sample_method_found)?;
     options.sample_method = sample_method;
 
@@ -607,14 +578,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //rng_type
     let mut rng_type = RngTypeT::StdDefaultRng;
     let rng_type_str = matches.get_one::<String>("rng_type").unwrap();
-    if rng_type_str == "cuda"{
-        rng_type =  RngTypeT::CUDARng;
+    if rng_type_str == "cuda" {
+        rng_type = RngTypeT::CUDARng;
     }
     options.rng_type = rng_type;
 
     //seed
     let seed_str = matches.get_one::<i32>("seed").unwrap();
-    let mut seed  = *seed_str;
+    let mut seed = *seed_str;
     // let mut seed: i32 = seed_str.parse().expect("Failed to parse seed as i32");
     if seed < 0 {
         let current_time = SystemTime::now()
@@ -636,11 +607,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let schedule_found = SCHEDULE_STR
         .iter()
         .position(|&method| method == schedule_selected)
-        .ok_or(format!("Invalid sampling method: {}",schedule_selected))?;
+        .ok_or(format!("Invalid sampling method: {}", schedule_selected))?;
     // Convert an index to an enumeration value
     let schedule = ScheduleT::from_index(schedule_found)?;
     options.schedule = schedule;
-    
+
     //clip_skip
     let clip_skip = matches.get_one::<i32>("clip_skip").unwrap();
     options.clip_skip = *clip_skip as i32;
@@ -648,7 +619,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     //vae_tiling
     let vae_tiling = matches.get_flag("vae_tiling");
     options.vae_tiling = vae_tiling;
-    
+
     //control_net_cpu
     let control_net_cpu = matches.get_flag("control_net_cpu");
     options.control_net_cpu = control_net_cpu;
@@ -672,9 +643,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if debug {
         print_params(&mut options);
     }
-    
+
     //------------------------------- run the model ----------------------------------------
-    match options.mode.as_str(){
+    match options.mode.as_str() {
         "txt2img" => {
             let context = SDBuidler::new(task, &options.model_path)?
                 .with_clip_l_path(options.clip_l_path)?
@@ -718,7 +689,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .generate()
                     .unwrap();
             }
-        },
+        }
         "img2img" => {
             let context = SDBuidler::new(task, &options.model_path)?
                 .with_clip_l_path(options.clip_l_path)?
@@ -765,11 +736,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .generate()
                     .unwrap();
             }
-        },
+        }
         "convert" => {
-            let quantization = Quantization::new(&options.model_path, options.vae_path, &options.output_path, options.wtype);
+            let quantization = Quantization::new(
+                &options.model_path,
+                options.vae_path,
+                &options.output_path,
+                options.wtype,
+            );
             quantization.convert().unwrap();
-        },
+        }
         _ => {
             println!("Error: this mode isn't supported!");
         }
@@ -797,7 +773,7 @@ struct Options {
     output_path: String,
     init_img: String,
     control_image: String,
-    
+
     prompt: String,
     negative_prompt: String,
     cfg_scale: f32,
@@ -821,7 +797,7 @@ struct Options {
     clip_on_cpu: bool,
     vae_on_cpu: bool,
     canny: bool,
-    upscale_repeats: i32, 
+    upscale_repeats: i32,
 }
 
 impl Default for Options {
@@ -845,7 +821,7 @@ impl Default for Options {
             output_path: String::from(""),
             init_img: String::from(""),
             control_image: String::from(""),
-        
+
             prompt: String::from(""),
             negative_prompt: String::from(""),
             cfg_scale: 7.0,
@@ -855,7 +831,7 @@ impl Default for Options {
             width: 512,
             height: 512,
             batch_count: 1,
-        
+
             sample_method: SampleMethodT::EULERA,
             schedule: ScheduleT::DEFAULT,
             sample_steps: 20,
@@ -869,7 +845,7 @@ impl Default for Options {
             clip_on_cpu: false,
             vae_on_cpu: false,
             canny: false,
-            upscale_repeats: 1, 
+            upscale_repeats: 1,
         }
     }
 }
@@ -879,7 +855,10 @@ fn print_params(params: &mut Options) {
     println!("[INFO] n_threads:         {}", params.n_threads);
     println!("[INFO] mode:              {}", params.mode);
     println!("[INFO] model_path:        {}", params.model_path);
-    println!("[INFO] diffusion_model_path:{}", params.diffusion_model_path);
+    println!(
+        "[INFO] diffusion_model_path:{}",
+        params.diffusion_model_path
+    );
     println!("[INFO] clip_l_path:       {}", params.clip_l_path);
     println!("[INFO] t5xxl_path:        {}", params.t5xxl_path);
     println!("[INFO] vae_path:          {}", params.vae_path);

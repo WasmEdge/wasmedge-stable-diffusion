@@ -18,7 +18,12 @@ pub struct Quantization {
     pub wtype: SdTypeT,
 }
 impl Quantization {
-    pub fn new(model_path: &str, vae_model_path: String, output_path: &str, wtype: SdTypeT) -> Quantization {
+    pub fn new(
+        model_path: &str,
+        vae_model_path: String,
+        output_path: &str,
+        wtype: SdTypeT,
+    ) -> Quantization {
         Quantization {
             model_path: model_path.to_string(),
             vae_model_path: vae_model_path,
@@ -272,6 +277,13 @@ impl BaseFunction for ImageToImage {
     fn generate(&self) -> Result<(), WasmedgeSdErrno> {
         if self.common.prompt.is_empty() {
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
+        }
+        match &self.image {
+            ImageType::Path(path) => {
+                if path.is_empty() {
+                    return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
+                }
+            }
         }
         let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
         let result = unsafe {
