@@ -56,7 +56,6 @@ const SAMPLE_METHODS: [&str; 10] = [
     "ipndm_v",
     "lcm",
 ];
-
 // Names of the sigma schedule overrides, same order as sample_schedule in stable-diffusion.h
 const SCHEDULE_STR: [&str; 6] = [
     "default",
@@ -80,7 +79,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "img2img",
                     "convert",
                 ])
-                .help("run mode (txt2img or img2img or convert, default: txt2img).")
+                .help("run mode (txt2img or img2img or convert, default: txt2img)")
                 .default_value("txt2img"),
         )
         .arg(
@@ -89,7 +88,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("threads")
                 .value_parser(clap::value_parser!(i32))
                 .value_name("N")
-                .help("number of threads to use during computation (default: -1).If threads <= 0, then threads will be set to the number of CPU physical cores.")
+                .help("number of threads to use during computation (default: -1).If threads <= 0, then threads will be set to the number of CPU physical cores")
                 .default_value("-1"),
         )
         .arg(
@@ -97,35 +96,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .short('m')
                 .long("model")
                 .value_name("MODEL")
-                .help("path to model.")
+                .help("path to full model")
                 .default_value("stable-diffusion-v1-4-Q8_0.gguf"),
+        )
+        .arg(
+            Arg::new("diffusion_model_path")
+                .long("diffusion-model")
+                .value_name("PATH")
+                .help("path to the standalone diffusion model")
+                .default_value(""),
         )
         .arg(
             Arg::new("clip_l_path")
                 .long("clip_l")
                 .value_name("PATH")
-                .help("path to clip_l.")
+                .help("path to clip_l")
                 .default_value(""),
         )
         .arg(
             Arg::new("t5xxl_path")
                 .long("t5xxl")
                 .value_name("PATH")
-                .help("path to t5xxl.")
-                .default_value(""),
-        )
-        .arg(
-            Arg::new("diffusion_model_path")
-                .long("diffusion-model")
-                .value_name("PATH")
-                .help("path to diffusion-model.")
+                .help("path to t5xxl")
                 .default_value(""),
         )
         .arg(
             Arg::new("vae_path")
                 .long("vae")
                 .value_name("VAE")
-                .help("path to vae.")
+                .help("path to vae")
                 .default_value(""),
         )
         .arg(
@@ -196,7 +195,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     "q5_0",
                     "q5_1",
                     "q8_0",
-
                     "q8_1",
                     "q2k",
                     "q3k",
@@ -263,7 +261,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .long("prompt")
                 .value_name("PROMPT")
                 .help("the prompt to render.")
-                .default_value("a lovely cat"),
+                .default_value("cat with blue eyes"),
         )
         .arg(
             Arg::new("negative_prompt")
@@ -277,8 +275,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("cfg_scale")
                 .long("cfg-scale")
                 .value_parser(clap::value_parser!(f32))
-                .value_name("CFG_SCALE")
-                .help("unconditional guidance scale: (default: 7.0).")
+                .value_name("SCALE")
+                .help("unconditional guidance scale: (default: 7.0)")
                 .default_value("7.0"),
         )
         .arg(
@@ -309,8 +307,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             Arg::new("guidance")
                 .long("guidance")
                 .value_parser(clap::value_parser!(f32))
-                .value_name("GUAIDANCEE")
-                .help("guidance")
+                .value_name("GUAIDANCE")
+                .help("guidance scale")
                 .default_value("3.5"),
         )
         .arg(
@@ -413,31 +411,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(
             Arg::new("vae_tiling")
                 .long("vae-tiling")
-                .help("process vae in tiles to reduce memory usage.")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("control_net_cpu")
-                .long("control-net-cpu")
-                .help("keep controlnet in cpu (for low vram).")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("canny")
-                .long("canny")
-                .help("apply canny preprocessor (edge detection).")
-                .action(ArgAction::SetTrue),
-        )
-        .arg(
-            Arg::new("clip_on_cpu")
-                .long("clip-on-cpu")
-                .help("clip on cpu.")
+                .help("process vae in tiles to reduce memory usage")
                 .action(ArgAction::SetTrue),
         )
         .arg(
             Arg::new("vae_on_cpu")
                 .long("vae-on-cpu")
-                .help("vae on cpu.")
+                .help("keep vae in cpu (for low vram)")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("clip_on_cpu")
+                .long("clip-on-cpu")
+                .help("keep clip in cpu (for low vram)")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("control_net_cpu")
+                .long("control-net-cpu")
+                .help("keep controlnet in cpu (for low vram)")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("canny")
+                .long("canny")
+                .help("apply canny preprocessor (edge detection)")
+                .action(ArgAction::SetTrue),
+        )
+        .arg(
+            Arg::new("debug")
+                .long("debug")
+                .help("print debug informations")
                 .action(ArgAction::SetTrue),
         )
         .after_help("run at the dir of .wasm, Example:wasmedge --dir .:. ./target/wasm32-wasi/release/wasmedge_stable_diffusion_example.wasm -m ../../models/stable-diffusion-v1-4-Q8_0.gguf -M img2img\n")
@@ -661,33 +665,35 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let vae_on_cpu = matches.get_flag("vae_on_cpu");
     options.vae_on_cpu = vae_on_cpu;
 
+    //debug
+    let debug = matches.get_flag("debug");
 
     //DEBUG: print options from CL
-    print_params(&mut options);
+    if debug {
+        print_params(&mut options);
+    }
     
     //------------------------------- run the model ----------------------------------------
-    let context = SDBuidler::new(task, sd_model)?
-        .with_clip_l_path(options.clip_l_path)?
-        .with_t5xxl_path(options.t5xxl_path)?
-        .with_vae_path(options.vae_path)?
-        .with_taesd_path(options.taesd_path)?
-        .with_control_net_path(options.control_net_path)?
-        .with_lora_model_dir(options.lora_model_dir)?
-        .with_embeddings_path(options.embeddings_path)?
-        .with_stacked_id_embeddings_path(options.stacked_id_embd_dir)?
-        .with_n_threads(options.n_threads)
-        .with_wtype(options.wtype)
-        .with_rng_type(options.rng_type)
-        .with_schedule(options.schedule)
-        .enable_vae_tiling(options.vae_tiling)
-        .enable_clip_on_cpu(options.clip_on_cpu)
-        .enable_control_net_cpu(options.control_net_cpu)
-        .enable_vae_on_cpu(options.vae_on_cpu)
-        .build();
-    
-    match sd_mode.as_str(){
+    match options.mode.as_str(){
         "txt2img" => {
-            println!("txt2img");
+            let context = SDBuidler::new(task, &options.model_path)?
+                .with_clip_l_path(options.clip_l_path)?
+                .with_t5xxl_path(options.t5xxl_path)?
+                .with_vae_path(options.vae_path)?
+                .with_taesd_path(options.taesd_path)?
+                .with_control_net_path(options.control_net_path)?
+                .with_lora_model_dir(options.lora_model_dir)?
+                .with_embeddings_path(options.embeddings_path)?
+                .with_stacked_id_embeddings_path(options.stacked_id_embd_dir)?
+                .with_n_threads(options.n_threads)
+                .with_wtype(options.wtype)
+                .with_rng_type(options.rng_type)
+                .with_schedule(options.schedule)
+                .enable_vae_tiling(options.vae_tiling)
+                .enable_clip_on_cpu(options.clip_on_cpu)
+                .enable_control_net_cpu(options.control_net_cpu)
+                .enable_vae_on_cpu(options.vae_on_cpu)
+                .build();
             if let Context::TextToImage(mut text_to_image) = context.create_context().unwrap() {
                 text_to_image
                     .set_prompt(options.prompt)
@@ -710,14 +716,29 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_upscale_model(options.upscale_model)
                     .set_upscale_repeats(options.upscale_repeats)
                     .set_output_path(options.output_path)
-                    .set_n_threads(options.n_threads)
-                    .set_wtype(options.wtype)
                     .generate()
                     .unwrap();
             }
         },
         "img2img" => {
-            println!("img2img");
+            let context = SDBuidler::new(task, &options.model_path)?
+                .with_clip_l_path(options.clip_l_path)?
+                .with_t5xxl_path(options.t5xxl_path)?
+                .with_vae_path(options.vae_path)?
+                .with_taesd_path(options.taesd_path)?
+                .with_control_net_path(options.control_net_path)?
+                .with_lora_model_dir(options.lora_model_dir)?
+                .with_embeddings_path(options.embeddings_path)?
+                .with_stacked_id_embeddings_path(options.stacked_id_embd_dir)?
+                .with_n_threads(options.n_threads)
+                .with_wtype(options.wtype)
+                .with_rng_type(options.rng_type)
+                .with_schedule(options.schedule)
+                .enable_vae_tiling(options.vae_tiling)
+                .enable_clip_on_cpu(options.clip_on_cpu)
+                .enable_control_net_cpu(options.control_net_cpu)
+                .enable_vae_on_cpu(options.vae_on_cpu)
+                .build();
             if let Context::ImageToImage(mut image_to_image) = context.create_context().unwrap() {
                 image_to_image
                     .set_prompt(options.prompt)
@@ -740,8 +761,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_upscale_model(options.upscale_model)
                     .set_upscale_repeats(options.upscale_repeats)
                     .set_output_path(options.output_path)
-                    .set_n_threads(options.n_threads)
-                    .set_wtype(options.wtype)
                     //addtional options for img2img
                     .set_image(ImageType::Path(&options.init_img))
                     .set_strength(options.strength)
@@ -750,19 +769,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         },
         "convert" => {
-            println!("into Mode: Convert!");
             // Quantization::new("./sd-v1-4.ckpt", "stable-diffusion-v1-4-Q8_0.gguf", SdTypeT::SdTypeQ8_0);
-            let quantization = Quantization::new( sd_model, output_path, wtype);
+            // let quantization = Quantization::new( sd_model, output_path, wtype);
+            let quantization = Quantization::new(&options.model_path, options.vae_path, &options.output_path, options.wtype);
             quantization.convert().unwrap();
         },
         _ => {
             println!("Error: this mode isn't supported!");
         }
     }
-
     return Ok(());
 }
-
 
 #[derive(Debug)]
 struct Options {
@@ -784,8 +801,7 @@ struct Options {
     output_path: String,
     init_img: String,
     control_image: String,
-
-
+    
     prompt: String,
     negative_prompt: String,
     cfg_scale: f32,
@@ -795,7 +811,6 @@ struct Options {
     width: i32,
     height: i32,
     batch_count: i32,
-
 
     sample_method: SampleMethodT,
     schedule: ScheduleT,
@@ -868,9 +883,9 @@ fn print_params(params: &mut Options) {
     println!("[INFO] n_threads:         {}", params.n_threads);
     println!("[INFO] mode:              {}", params.mode);
     println!("[INFO] model_path:        {}", params.model_path);
+    println!("[INFO] diffusion_model_path:{}", params.diffusion_model_path);
     println!("[INFO] clip_l_path:       {}", params.clip_l_path);
     println!("[INFO] t5xxl_path:        {}", params.t5xxl_path);
-    println!("[INFO] diffusion_model_path:{}", params.diffusion_model_path);
     println!("[INFO] vae_path:          {}", params.vae_path);
     println!("[INFO] taesd_path:        {}", params.taesd_path);
     println!("[INFO] control_net_path:  {}", params.control_net_path);

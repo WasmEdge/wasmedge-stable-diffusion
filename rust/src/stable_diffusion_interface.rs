@@ -353,8 +353,6 @@ pub unsafe fn text_to_image(
     output_path: &str,
     output_buf: *mut u8,
     out_buffer_max_size: i32,
-    n_threads: i32,
-    wtype: SdTypeT,
 ) -> Result<u32, WasmedgeSdErrno> {
     let prompt_ptr = prompt.as_ptr() as i32;
     let prompt_len = prompt.len() as i32;
@@ -374,7 +372,6 @@ pub unsafe fn text_to_image(
     let output_buf_ptr = output_buf as i32;
     let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
-    let wtype = wtype as i32;
     let result = wasmedge_stablediffusion::text_to_image(
         prompt_ptr,
         prompt_len,
@@ -406,8 +403,6 @@ pub unsafe fn text_to_image(
         output_buf_ptr,
         out_buffer_max_size_,
         write_bytes.as_mut_ptr() as i32,
-        n_threads,
-        wtype,
     );
     if result != 0 {
         Err(WasmedgeSdErrno(result as u32))
@@ -444,8 +439,6 @@ pub unsafe fn image_to_image(
     output_path: &str,
     output_buf: *mut u8,
     out_buffer_max_size: i32,
-    n_threads: i32,
-    wtype: SdTypeT,
 ) -> Result<u32, WasmedgeSdErrno> {
     let (image_ptr, image_len) = parse_image(image);
     let (control_image_ptr, control_image_len) = parse_image(control_image);
@@ -466,7 +459,6 @@ pub unsafe fn image_to_image(
     let output_buf_ptr = output_buf as i32;
     let out_buffer_max_size_ = out_buffer_max_size;
     let mut write_bytes = MaybeUninit::<u32>::uninit();
-    let wtype = wtype as i32;
     let result = wasmedge_stablediffusion::image_to_image(
         image_ptr,
         image_len,
@@ -501,8 +493,6 @@ pub unsafe fn image_to_image(
         output_buf_ptr,
         out_buffer_max_size_,
         write_bytes.as_mut_ptr() as i32,
-        n_threads,
-        wtype,
     );
     if result != 0 {
         Err(WasmedgeSdErrno(result as u32))
@@ -580,8 +570,6 @@ pub mod wasmedge_stablediffusion {
             out_buffer_ptr: i32,
             out_buffer_max_size: i32,
             bytes_written_ptr: i32,
-            n_threads: i32,
-            wtype: i32,
         ) -> i32;
 
         pub fn text_to_image(
@@ -615,8 +603,6 @@ pub mod wasmedge_stablediffusion {
             out_buffer_ptr: i32,
             out_buffer_max_size: i32,
             bytes_written_ptr: i32,
-            n_threads: i32,
-            wtype: i32,
         ) -> i32;
 
         pub fn convert(

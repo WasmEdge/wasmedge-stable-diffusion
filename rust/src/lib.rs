@@ -21,6 +21,7 @@ pub struct Quantization {
 pub enum Task {
     TextToImage,
     ImageToImage,
+    Convert,
 }
 
 #[derive(Debug)]
@@ -76,8 +77,6 @@ pub struct BaseContext<'a> {
     pub upscale_model: String,
     pub upscale_repeats: i32,
     pub output_path: String,
-    pub n_threads: i32,
-    pub wtype: SdTypeT,
 }
 pub trait BaseFunction<'a> {
     fn base(&mut self) -> &mut BaseContext<'a>;
@@ -201,18 +200,6 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_n_threads(&mut self, n_threads: i32) -> &mut Self {
-        {
-            self.base().n_threads = n_threads;
-        }
-        self
-    }
-    fn set_wtype(&mut self, wtype: SdTypeT) -> &mut Self {
-        {
-            self.base().wtype = wtype;
-        }
-        self
-    }
     fn generate(&self) -> Result<(), WasmedgeSdErrno>;
 }
 
@@ -229,12 +216,12 @@ pub struct ImageToImage<'a> {
 }
 
 impl Quantization {
-    pub fn new(model_path: &str, output_path: &str, wtype: SdTypeT) -> Quantization {
+    pub fn new(model_path: &str, vae_model_path: String, output_path: &str, wtype: SdTypeT) -> Quantization {
         Quantization {
             model_path: model_path.to_string(),
-            vae_model_path: "".to_string(),
+            vae_model_path: vae_model_path,
             output_path: output_path.to_string(),
-            wtype,
+            wtype: wtype,
         }
     }
     pub fn convert(&self) -> Result<(), WasmedgeSdErrno> {
@@ -254,6 +241,7 @@ impl StableDiffusion {
         let vae_decode_only = match task {
             Task::TextToImage => true,
             Task::ImageToImage => false,
+            Task::Convert => false,
         };
         StableDiffusion {
             task,
@@ -283,6 +271,7 @@ impl StableDiffusion {
         let vae_decode_only = match task {
             Task::TextToImage => true,
             Task::ImageToImage => false,
+            Task::Convert => false,
         };
         StableDiffusion {
             task,
@@ -355,8 +344,6 @@ impl StableDiffusion {
                 upscale_model: "".to_string(),
                 upscale_repeats: 1,
                 output_path: "".to_string(),
-                n_threads: -1,
-                wtype: SdTypeT::SdTypeCount,
             };
             match self.task {
                 Task::TextToImage => Ok(Context::TextToImage(TextToImage { common })),
@@ -365,6 +352,7 @@ impl StableDiffusion {
                     image: ImageType::Path(""),
                     strength: 0.75,
                 })),
+                Task::Convert => todo!(),
             }
         }
     }
@@ -403,8 +391,6 @@ impl<'a> BaseFunction<'a> for TextToImage<'a> {
                 &self.common.output_path,
                 data.as_mut_ptr(),
                 BUF_LEN,
-                self.common.n_threads,
-                self.common.wtype,
             )
         };
         result?;
@@ -455,8 +441,6 @@ impl<'a> BaseFunction<'a> for ImageToImage<'a> {
                 &self.common.output_path,
                 data.as_mut_ptr(),
                 BUF_LEN,
-                self.common.n_threads,
-                self.common.wtype,
             )
         };
         result?;
@@ -630,11 +614,11 @@ impl SDBuidler {
 //Parse command line arguments, for --mode
 impl std::str::FromStr for Task {
     type Err = String;
-
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "txt2img" => Ok(Task::TextToImage),
             "img2img" => Ok(Task::ImageToImage),
+            "convert" => Ok(Task::Convert),
             _ => Err(format!("Invalid mode: {}", s)),
         }
     }
