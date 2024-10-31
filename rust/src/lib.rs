@@ -26,9 +26,9 @@ impl Quantization {
     ) -> Quantization {
         Quantization {
             model_path: model_path.to_string(),
-            vae_model_path: vae_model_path,
+            vae_model_path,
             output_path: output_path.to_string(),
-            wtype: wtype,
+            wtype,
         }
     }
     pub fn convert(&self) -> Result<(), WasmedgeSdErrno> {
