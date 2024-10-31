@@ -681,17 +681,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_t5xxl_path(options.t5xxl_path)?
                 .with_vae_path(options.vae_path)?
                 .with_taesd_path(options.taesd_path)?
-                .with_control_net_path(options.control_net_path)?
                 .with_lora_model_dir(options.lora_model_dir)?
                 .with_embeddings_path(options.embeddings_path)?
                 .with_stacked_id_embeddings_path(options.stacked_id_embd_dir)?
+                .use_control_net(options.control_net_path, options.control_net_cpu)?
                 .with_n_threads(options.n_threads)
                 .with_wtype(options.wtype)
                 .with_rng_type(options.rng_type)
                 .with_schedule(options.schedule)
                 .enable_vae_tiling(options.vae_tiling)
                 .enable_clip_on_cpu(options.clip_on_cpu)
-                .enable_control_net_cpu(options.control_net_cpu)
                 .enable_vae_on_cpu(options.vae_on_cpu)
                 .build();
             if let Context::TextToImage(mut text_to_image) = context.create_context().unwrap() {
@@ -700,7 +699,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_guidance(options.guidance)
                     .set_width(options.width)
                     .set_height(options.height)
-                    .set_control_image(ImageType::Path(&options.control_image))
+                    .set_control_image(ImageType::Path(options.control_image))
                     .set_negative_prompt(options.negative_prompt)
                     .set_clip_skip(options.clip_skip)
                     .set_cfg_scale(options.cfg_scale)
@@ -710,9 +709,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_batch_count(options.batch_count)
                     .set_control_strength(options.control_strength)
                     .set_style_ratio(options.style_ratio)
-                    .set_normalize_input(options.normalize_input)
+                    .enable_normalize_input(options.normalize_input)
                     .set_input_id_images_dir(options.input_id_images_dir)
-                    .set_canny_preprocess(options.canny)
+                    .enable_canny_preprocess(options.canny)
                     .set_upscale_model(options.upscale_model)
                     .set_upscale_repeats(options.upscale_repeats)
                     .set_output_path(options.output_path)
@@ -726,17 +725,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_t5xxl_path(options.t5xxl_path)?
                 .with_vae_path(options.vae_path)?
                 .with_taesd_path(options.taesd_path)?
-                .with_control_net_path(options.control_net_path)?
                 .with_lora_model_dir(options.lora_model_dir)?
                 .with_embeddings_path(options.embeddings_path)?
                 .with_stacked_id_embeddings_path(options.stacked_id_embd_dir)?
+                .use_control_net(options.control_net_path, options.control_net_cpu)?
                 .with_n_threads(options.n_threads)
                 .with_wtype(options.wtype)
                 .with_rng_type(options.rng_type)
                 .with_schedule(options.schedule)
                 .enable_vae_tiling(options.vae_tiling)
                 .enable_clip_on_cpu(options.clip_on_cpu)
-                .enable_control_net_cpu(options.control_net_cpu)
                 .enable_vae_on_cpu(options.vae_on_cpu)
                 .build();
             if let Context::ImageToImage(mut image_to_image) = context.create_context().unwrap() {
@@ -745,7 +743,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_guidance(options.guidance)
                     .set_width(options.width)
                     .set_height(options.height)
-                    .set_control_image(ImageType::Path(&options.control_image))
+                    .set_control_image(ImageType::Path(options.control_image))
                     .set_negative_prompt(options.negative_prompt)
                     .set_clip_skip(options.clip_skip)
                     .set_cfg_scale(options.cfg_scale)
@@ -755,22 +753,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     .set_batch_count(options.batch_count)
                     .set_control_strength(options.control_strength)
                     .set_style_ratio(options.style_ratio)
-                    .set_normalize_input(options.normalize_input)
+                    .enable_normalize_input(options.normalize_input)
                     .set_input_id_images_dir(options.input_id_images_dir)
-                    .set_canny_preprocess(options.canny)
+                    .enable_canny_preprocess(options.canny)
                     .set_upscale_model(options.upscale_model)
                     .set_upscale_repeats(options.upscale_repeats)
                     .set_output_path(options.output_path)
                     //addtional options for img2img
-                    .set_image(ImageType::Path(&options.init_img))
+                    .set_image(ImageType::Path(options.init_img))
                     .set_strength(options.strength)
                     .generate()
                     .unwrap();
             }
         },
         "convert" => {
-            // Quantization::new("./sd-v1-4.ckpt", "stable-diffusion-v1-4-Q8_0.gguf", SdTypeT::SdTypeQ8_0);
-            // let quantization = Quantization::new( sd_model, output_path, wtype);
             let quantization = Quantization::new(&options.model_path, options.vae_path, &options.output_path, options.wtype);
             quantization.convert().unwrap();
         },

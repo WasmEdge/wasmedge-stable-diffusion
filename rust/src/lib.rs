@@ -10,11 +10,32 @@ const BUF_LEN: i32 = 1000000;
 
 pub type SDResult<T> = Result<T, SDError>;
 
+/// Represents Quantization task.
 pub struct Quantization {
     pub model_path: String,
     pub vae_model_path: String,
     pub output_path: String,
     pub wtype: SdTypeT,
+}
+impl Quantization {
+    pub fn new(model_path: &str, vae_model_path: String, output_path: &str, wtype: SdTypeT) -> Quantization {
+        Quantization {
+            model_path: model_path.to_string(),
+            vae_model_path: vae_model_path,
+            output_path: output_path.to_string(),
+            wtype: wtype,
+        }
+    }
+    pub fn convert(&self) -> Result<(), WasmedgeSdErrno> {
+        unsafe {
+            stable_diffusion_interface::convert(
+                &self.model_path,
+                &self.vae_model_path,
+                &self.output_path,
+                self.wtype,
+            )
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -23,45 +44,33 @@ pub enum Task {
     ImageToImage,
     Convert,
 }
-
-#[derive(Debug)]
-pub enum Context<'a> {
-    TextToImage(TextToImage<'a>),
-    ImageToImage(ImageToImage<'a>),
+// Parse command line arguments, for --mode
+impl std::str::FromStr for Task {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "txt2img" => Ok(Task::TextToImage),
+            "img2img" => Ok(Task::ImageToImage),
+            "convert" => Ok(Task::Convert),
+            _ => Err(format!("Invalid mode: {}", s)),
+        }
+    }
 }
 
 #[derive(Debug)]
-pub struct StableDiffusion {
-    task: Task,
-    model_path: String,
-    clip_l_path: String,
-    t5xxl_path: String,
-    diffusion_model_path: String,
-    vae_path: String,
-    taesd_path: String,
-    control_net_path: String,
-    lora_model_dir: String,
-    embed_dir: String,
-    id_embed_dir: String,
-    vae_decode_only: bool,
-    vae_tiling: bool,
-    n_threads: i32,
-    wtype: SdTypeT,
-    rng_type: RngTypeT,
-    schedule: ScheduleT,
-    clip_on_cpu: bool,
-    control_net_cpu: bool,
-    vae_on_cpu: bool,
+pub enum Context {
+    TextToImage(TextToImage),
+    ImageToImage(ImageToImage),
 }
 
 #[derive(Debug)]
-pub struct BaseContext<'a> {
+pub struct BaseContext {
     pub session_id: u32,
     pub prompt: String,
     pub guidance: f32,
     pub width: i32,
     pub height: i32,
-    pub control_image: ImageType<'a>,
+    pub control_image: ImageType,
     pub negative_prompt: String,
     pub clip_skip: i32,
     pub cfg_scale: f32,
@@ -78,8 +87,8 @@ pub struct BaseContext<'a> {
     pub upscale_repeats: i32,
     pub output_path: String,
 }
-pub trait BaseFunction<'a> {
-    fn base(&mut self) -> &mut BaseContext<'a>;
+pub trait BaseFunction {
+    fn base(&mut self) -> &mut BaseContext;
     fn set_prompt(&mut self, prompt: String) -> &mut Self {
         {
             self.base().prompt = prompt;
@@ -104,15 +113,15 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_control_image(&mut self, control_image: ImageType<'a>) -> &mut Self {
+    fn set_control_image(&mut self, control_image: ImageType) -> &mut Self {
         {
             self.base().control_image = control_image;
         }
         self
     }
-    fn set_negative_prompt(&mut self, negative_prompt: String) -> &mut Self {
+    fn set_negative_prompt(&mut self, negative_prompt: impl Into<String>) -> &mut Self {
         {
-            self.base().negative_prompt = negative_prompt;
+            self.base().negative_prompt = negative_prompt.into();
         }
         self
     }
@@ -164,7 +173,7 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_normalize_input(&mut self, normalize_input: bool) -> &mut Self {
+    fn enable_normalize_input(&mut self, normalize_input: bool) -> &mut Self {
         {
             self.base().normalize_input = normalize_input;
         }
@@ -176,7 +185,7 @@ pub trait BaseFunction<'a> {
         }
         self
     }
-    fn set_canny_preprocess(&mut self, canny_preprocess: bool) -> &mut Self {
+    fn enable_canny_preprocess(&mut self, canny_preprocess: bool) -> &mut Self {
         {
             self.base().canny_preprocess = canny_preprocess;
         }
@@ -203,39 +212,287 @@ pub trait BaseFunction<'a> {
     fn generate(&self) -> Result<(), WasmedgeSdErrno>;
 }
 
+/// Represents computation context for text-to-image task
 #[derive(Debug)]
-pub struct TextToImage<'a> {
-    pub common: BaseContext<'a>,
+pub struct TextToImage {
+    pub common: BaseContext,
+}
+impl BaseFunction for TextToImage {
+    fn base(&mut self) -> &mut BaseContext {
+        &mut self.common
+    }
+    fn generate(&self) -> Result<(), WasmedgeSdErrno> {
+        if self.common.prompt.is_empty() {
+            return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
+        }
+        let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
+        let result = unsafe {
+            stable_diffusion_interface::text_to_image(
+                &self.common.prompt,
+                self.common.session_id,
+                &self.common.control_image,
+                &self.common.negative_prompt,
+                self.common.guidance,
+                self.common.width,
+                self.common.height,
+                self.common.clip_skip,
+                self.common.cfg_scale,
+                self.common.sample_method,
+                self.common.sample_steps,
+                self.common.seed,
+                self.common.batch_count,
+                self.common.control_strength,
+                self.common.style_ratio,
+                self.common.normalize_input,
+                &self.common.input_id_images_dir,
+                self.common.canny_preprocess,
+                &self.common.upscale_model,
+                self.common.upscale_repeats,
+                &self.common.output_path,
+                data.as_mut_ptr(),
+                BUF_LEN,
+            )
+        };
+        result?;
+        Ok(())
+    }
 }
 
+/// Represents computation context for image-to-image task.
 #[derive(Debug)]
-pub struct ImageToImage<'a> {
-    pub common: BaseContext<'a>,
-    pub image: ImageType<'a>,
+pub struct ImageToImage {
+    pub common: BaseContext,
+    pub image: ImageType,
     pub strength: f32,
 }
-
-impl Quantization {
-    pub fn new(model_path: &str, vae_model_path: String, output_path: &str, wtype: SdTypeT) -> Quantization {
-        Quantization {
-            model_path: model_path.to_string(),
-            vae_model_path: vae_model_path,
-            output_path: output_path.to_string(),
-            wtype: wtype,
-        }
+impl BaseFunction for ImageToImage {
+    fn base(&mut self) -> &mut BaseContext {
+        &mut self.common
     }
-    pub fn convert(&self) -> Result<(), WasmedgeSdErrno> {
-        unsafe {
-            stable_diffusion_interface::convert(
-                &self.model_path,
-                &self.vae_model_path,
-                &self.output_path,
-                self.wtype,
-            )
+    fn generate(&self) -> Result<(), WasmedgeSdErrno> {
+        if self.common.prompt.is_empty() {
+            return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
+        let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
+        let result = unsafe {
+            stable_diffusion_interface::image_to_image(
+                &self.image,
+                self.common.session_id,
+                self.common.guidance,
+                self.common.width,
+                self.common.height,
+                &self.common.control_image,
+                &self.common.prompt,
+                &self.common.negative_prompt,
+                self.common.clip_skip,
+                self.common.cfg_scale,
+                self.common.sample_method,
+                self.common.sample_steps,
+                self.strength,
+                self.common.seed,
+                self.common.batch_count,
+                self.common.control_strength,
+                self.common.style_ratio,
+                self.common.normalize_input,
+                &self.common.input_id_images_dir,
+                self.common.canny_preprocess,
+                &self.common.upscale_model,
+                self.common.upscale_repeats,
+                &self.common.output_path,
+                data.as_mut_ptr(),
+                BUF_LEN,
+            )
+        };
+        result?;
+        Ok(())
+    }
+}
+impl ImageToImage {
+    pub fn set_image(&mut self, image: ImageType) -> &mut Self {
+        {
+            self.image = image;
+        }
+        self
+    }
+    pub fn set_strength(&mut self, strength: f32) -> &mut Self {
+        {
+            self.strength = strength;
+        }
+        self
     }
 }
 
+/// Builder for creating a StableDiffusion instance.
+#[derive(Debug)]
+pub struct SDBuidler {
+    sd: StableDiffusion,
+}
+impl SDBuidler {
+    pub fn new(task: Task, model_path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = model_path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
+        let sd = StableDiffusion::new(task, path);
+        Ok(Self { sd })
+    }
+
+    /// Create a new builder with a full model path.
+    pub fn new_with_full_model(task: Task, model_path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = model_path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
+        let sd = StableDiffusion::new(task, path);
+        Ok(Self { sd })
+    }
+
+    /// Create a new builder with a standalone diffusion model.
+    pub fn new_with_standalone_model(
+        task: Task,
+        diffusion_model_path: impl AsRef<Path>,
+    ) -> SDResult<Self> {
+        let path = diffusion_model_path
+            .as_ref()
+            .to_str()
+            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
+        let sd = StableDiffusion::new_with_standalone_model(task, path);
+        Ok(Self { sd })
+    }
+
+    pub fn with_vae_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the vae file is not valid unicode.".into())
+        })?;
+        self.sd.vae_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_clip_l_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the clip_l file is not valid unicode.".into())
+        })?;
+        self.sd.clip_l_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_t5xxl_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the t5xxl file is not valid unicode.".into())
+        })?;
+        self.sd.t5xxl_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_taesd_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the taesd file is not valid unicode.".into())
+        })?;
+        self.sd.taesd_path = path.into();
+        Ok(self)
+    }
+
+    pub fn with_lora_model_dir(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath(
+                "The path to the lora model directory is not valid unicode.".into(),
+            )
+        })?;
+        self.sd.lora_model_dir = path.into();
+        Ok(self)
+    }
+
+    pub fn use_control_net(mut self, path: impl AsRef<Path>, on_cpu: bool) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the controlnet file is not valid unicode.".into())
+        })?;
+        self.sd.control_net_path = path.into();
+        self.sd.control_net_cpu = on_cpu;
+        Ok(self)
+    }
+
+    pub fn with_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath("The path to the embeddings dir is not valid unicode.".into())
+        })?;
+        self.sd.embed_dir = path.into();
+        Ok(self)
+    }
+
+    pub fn with_stacked_id_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
+        let path = path.as_ref().to_str().ok_or_else(|| {
+            SDError::InvalidPath(
+                "The path to the stacked id embeddings dir is not valid unicode.".into(),
+            )
+        })?;
+        self.sd.id_embed_dir = path.into();
+        Ok(self)
+    }
+
+    pub fn with_n_threads(mut self, n_threads: i32) -> Self {
+        self.sd.n_threads = n_threads;
+        self
+    }
+
+    pub fn with_wtype(mut self, wtype: SdTypeT) -> Self {
+        self.sd.wtype = wtype;
+        self
+    }
+
+    pub fn with_rng_type(mut self, rng_type: RngTypeT) -> Self {
+        self.sd.rng_type = rng_type;
+        self
+    }
+
+    pub fn with_schedule(mut self, schedule: ScheduleT) -> Self {
+        self.sd.schedule = schedule;
+        self
+    }
+
+    pub fn enable_vae_tiling(mut self, enable: bool) -> Self {
+        self.sd.vae_tiling = enable;
+        self
+    }
+
+    pub fn enable_clip_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.clip_on_cpu = enable;
+        self
+    }
+
+    pub fn enable_vae_on_cpu(mut self, enable: bool) -> Self {
+        self.sd.vae_on_cpu = enable;
+        self
+    }
+
+    pub fn build(self) -> StableDiffusion {
+        self.sd
+    }
+}
+
+/// Represents a stable diffusion model.
+#[derive(Debug)]
+pub struct StableDiffusion {
+    task: Task,
+    model_path: String,
+    clip_l_path: String,
+    t5xxl_path: String,
+    diffusion_model_path: String,
+    vae_path: String,
+    taesd_path: String,
+    control_net_path: String,
+    lora_model_dir: String,
+    embed_dir: String,
+    id_embed_dir: String,
+    vae_decode_only: bool,
+    vae_tiling: bool,
+    n_threads: i32,
+    wtype: SdTypeT,
+    rng_type: RngTypeT,
+    schedule: ScheduleT,
+    clip_on_cpu: bool,
+    control_net_cpu: bool,
+    vae_on_cpu: bool,
+}
 impl StableDiffusion {
     pub fn new(task: Task, model_path: &str) -> StableDiffusion {
         let vae_decode_only = match task {
@@ -328,7 +585,7 @@ impl StableDiffusion {
                 guidance: 3.5,
                 width: 512,
                 height: 512,
-                control_image: ImageType::Path(""),
+                control_image: ImageType::Path("".to_string()),
                 negative_prompt: "".to_string(),
                 clip_skip: -1,
                 cfg_scale: 7.0,
@@ -349,277 +606,11 @@ impl StableDiffusion {
                 Task::TextToImage => Ok(Context::TextToImage(TextToImage { common })),
                 Task::ImageToImage => Ok(Context::ImageToImage(ImageToImage {
                     common,
-                    image: ImageType::Path(""),
+                    image: ImageType::Path("".to_string()),
                     strength: 0.75,
                 })),
                 Task::Convert => todo!(),
             }
-        }
-    }
-}
-impl<'a> BaseFunction<'a> for TextToImage<'a> {
-    fn base(&mut self) -> &mut BaseContext<'a> {
-        &mut self.common
-    }
-    fn generate(&self) -> Result<(), WasmedgeSdErrno> {
-        if self.common.prompt.is_empty() {
-            return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
-        }
-        let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
-        let result = unsafe {
-            stable_diffusion_interface::text_to_image(
-                &self.common.prompt,
-                self.common.session_id,
-                &self.common.control_image,
-                &self.common.negative_prompt,
-                self.common.guidance,
-                self.common.width,
-                self.common.height,
-                self.common.clip_skip,
-                self.common.cfg_scale,
-                self.common.sample_method,
-                self.common.sample_steps,
-                self.common.seed,
-                self.common.batch_count,
-                self.common.control_strength,
-                self.common.style_ratio,
-                self.common.normalize_input,
-                &self.common.input_id_images_dir,
-                self.common.canny_preprocess,
-                &self.common.upscale_model,
-                self.common.upscale_repeats,
-                &self.common.output_path,
-                data.as_mut_ptr(),
-                BUF_LEN,
-            )
-        };
-        result?;
-        Ok(())
-    }
-}
-
-impl<'a> BaseFunction<'a> for ImageToImage<'a> {
-    fn base(&mut self) -> &mut BaseContext<'a> {
-        &mut self.common
-    }
-    fn generate(&self) -> Result<(), WasmedgeSdErrno> {
-        if self.common.prompt.is_empty() {
-            return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
-        }
-        match self.image {
-            ImageType::Path(path) => {
-                if path.is_empty() {
-                    return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
-                }
-            }
-        }
-        let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
-        let result = unsafe {
-            stable_diffusion_interface::image_to_image(
-                &self.image,
-                self.common.session_id,
-                self.common.guidance,
-                self.common.width,
-                self.common.height,
-                &self.common.control_image,
-                &self.common.prompt,
-                &self.common.negative_prompt,
-                self.common.clip_skip,
-                self.common.cfg_scale,
-                self.common.sample_method,
-                self.common.sample_steps,
-                self.strength,
-                self.common.seed,
-                self.common.batch_count,
-                self.common.control_strength,
-                self.common.style_ratio,
-                self.common.normalize_input,
-                &self.common.input_id_images_dir,
-                self.common.canny_preprocess,
-                &self.common.upscale_model,
-                self.common.upscale_repeats,
-                &self.common.output_path,
-                data.as_mut_ptr(),
-                BUF_LEN,
-            )
-        };
-        result?;
-        Ok(())
-    }
-}
-impl<'a> ImageToImage<'a> {
-    pub fn set_image(&mut self, image: ImageType<'a>) -> &mut Self {
-        {
-            self.image = image;
-        }
-        self
-    }
-    pub fn set_strength(&mut self, strength: f32) -> &mut Self {
-        {
-            self.strength = strength;
-        }
-        self
-    }
-}
-
-#[derive(Debug)]
-pub struct SDBuidler {
-    sd: StableDiffusion,
-}
-impl SDBuidler {
-    pub fn new(task: Task, model_path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = model_path
-            .as_ref()
-            .to_str()
-            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
-        let sd = StableDiffusion::new(task, path);
-        Ok(Self { sd })
-    }
-
-    /// Create a new builder with a full model path.
-    pub fn new_with_full_model(task: Task, model_path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = model_path
-            .as_ref()
-            .to_str()
-            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
-        let sd = StableDiffusion::new(task, path);
-        Ok(Self { sd })
-    }
-
-    /// Create a new builder with a standalone diffusion model.
-    pub fn new_with_standalone_model(
-        task: Task,
-        diffusion_model_path: impl AsRef<Path>,
-    ) -> SDResult<Self> {
-        let path = diffusion_model_path
-            .as_ref()
-            .to_str()
-            .ok_or_else(|| SDError::Operation("The model path is not valid unicode.".into()))?;
-        let sd = StableDiffusion::new_with_standalone_model(task, path);
-        Ok(Self { sd })
-    }
-
-    pub fn with_vae_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::InvalidPath("The path to the vae file is not valid unicode.".into())
-        })?;
-        self.sd.vae_path = path.into();
-        Ok(self)
-    }
-
-    pub fn with_clip_l_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::InvalidPath("The path to the clip_l file is not valid unicode.".into())
-        })?;
-        self.sd.clip_l_path = path.into();
-        Ok(self)
-    }
-
-    pub fn with_t5xxl_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::InvalidPath("The path to the t5xxl file is not valid unicode.".into())
-        })?;
-        self.sd.t5xxl_path = path.into();
-        Ok(self)
-    }
-
-    pub fn with_taesd_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the taesd file is not valid unicode.".into())
-        })?;
-        self.sd.taesd_path = path.into();
-        Ok(self)
-    }
-
-    pub fn with_control_net_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the control net file is not valid unicode.".into())
-        })?;
-        self.sd.control_net_path = path.into();
-        Ok(self)
-    }
-
-    //lora_model_dir
-    pub fn with_lora_model_dir(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the lora model dir is not valid unicode.".into())
-        })?;
-        self.sd.lora_model_dir = path.into();
-        Ok(self)
-    }
-
-    pub fn with_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the embeddings dir is not valid unicode.".into())
-        })?;
-        self.sd.embed_dir = path.into();
-        Ok(self)
-    }
-
-    pub fn with_stacked_id_embeddings_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
-        let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation(
-                "The path to the stacked id embeddings dir is not valid unicode.".into(),
-            )
-        })?;
-        self.sd.id_embed_dir = path.into();
-        Ok(self)
-    }
-
-    pub fn enable_vae_tiling(mut self, enable: bool) -> Self {
-        self.sd.vae_tiling = enable;
-        self
-    }
-
-    pub fn with_n_threads(mut self, n_threads: i32) -> Self {
-        self.sd.n_threads = n_threads;
-        self
-    }
-
-    pub fn with_wtype(mut self, wtype: SdTypeT) -> Self {
-        self.sd.wtype = wtype;
-        self
-    }
-
-    pub fn with_rng_type(mut self, rng_type: RngTypeT) -> Self {
-        self.sd.rng_type = rng_type;
-        self
-    }
-
-    pub fn with_schedule(mut self, schedule: ScheduleT) -> Self {
-        self.sd.schedule = schedule;
-        self
-    }
-
-    pub fn enable_clip_on_cpu(mut self, enable: bool) -> Self {
-        self.sd.clip_on_cpu = enable;
-        self
-    }
-
-    pub fn enable_control_net_cpu(mut self, enable: bool) -> Self {
-        self.sd.control_net_cpu = enable;
-        self
-    }
-
-    pub fn enable_vae_on_cpu(mut self, enable: bool) -> Self {
-        self.sd.vae_on_cpu = enable;
-        self
-    }
-
-    pub fn build(self) -> StableDiffusion {
-        self.sd
-    }
-}
-
-//Parse command line arguments, for --mode
-impl std::str::FromStr for Task {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "txt2img" => Ok(Task::TextToImage),
-            "img2img" => Ok(Task::ImageToImage),
-            "convert" => Ok(Task::Convert),
-            _ => Err(format!("Invalid mode: {}", s)),
         }
     }
 }
