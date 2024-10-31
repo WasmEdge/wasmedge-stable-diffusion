@@ -273,6 +273,13 @@ impl BaseFunction for ImageToImage {
         if self.common.prompt.is_empty() {
             return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
         }
+        match &self.image {
+            ImageType::Path(path) => {
+                if path.is_empty() {
+                    return Err(WASMEDGE_SD_ERRNO_INVALID_ARGUMENT);
+                }
+            }
+        }
         let mut data: Vec<u8> = vec![0; BUF_LEN as usize];
         let result = unsafe {
             stable_diffusion_interface::image_to_image(
