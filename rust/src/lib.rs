@@ -501,7 +501,7 @@ impl SDBuidler {
 
     pub fn with_vae_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
         let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the vae file is not valid unicode.".into())
+            SDError::InvalidPath("The path to the vae file is not valid unicode.".into())
         })?;
         self.sd.vae_path = path.into();
         Ok(self)
@@ -509,7 +509,7 @@ impl SDBuidler {
 
     pub fn with_clip_l_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
         let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the clip_l file is not valid unicode.".into())
+            SDError::InvalidPath("The path to the clip_l file is not valid unicode.".into())
         })?;
         self.sd.clip_l_path = path.into();
         Ok(self)
@@ -517,7 +517,7 @@ impl SDBuidler {
 
     pub fn with_t5xxl_path(mut self, path: impl AsRef<Path>) -> SDResult<Self> {
         let path = path.as_ref().to_str().ok_or_else(|| {
-            SDError::Operation("The path to the t5xxl file is not valid unicode.".into())
+            SDError::InvalidPath("The path to the t5xxl file is not valid unicode.".into())
         })?;
         self.sd.t5xxl_path = path.into();
         Ok(self)
